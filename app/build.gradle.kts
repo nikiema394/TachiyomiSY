@@ -159,6 +159,8 @@ dependencies {
     implementation(compose.material.icons)
     implementation(compose.animation)
     implementation(compose.animation.graphics)
+    implementation(libs.media3.extractor)
+    implementation(libs.media3.exoplayer)
     debugImplementation(compose.ui.tooling)
     implementation(compose.ui.tooling.preview)
     implementation(compose.ui.util)
@@ -282,6 +284,15 @@ dependencies {
     // RatingBar (SY)
     implementation(sylibs.ratingbar)
     implementation(sylibs.composeRatingbar)
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.0")
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.0")
+    implementation("com.google.mlkit:text-recognition-korean:16.0.0")
+    implementation("com.google.mlkit:translate:17.0.2")
+    implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
+
+
 }
 
 androidComponents {

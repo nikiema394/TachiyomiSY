@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.data.download
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import com.google.mlkit.vision.common.InputImage
 import com.hippo.unifile.UniFile
 import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.domain.manga.model.getComicInfo
@@ -16,6 +18,9 @@ import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import eu.kanade.tachiyomi.util.storage.DiskUtil.NOMEDIA_FILE
 import eu.kanade.tachiyomi.util.storage.saveTo
+import eu.kanade.translation.ComicTranslator
+import eu.kanade.translation.LanguageTranslators
+import eu.kanade.translation.ScanLanguage
 import exh.source.isEhBasedSource
 import exh.util.DataSaver
 import exh.util.DataSaver.Companion.getImage
@@ -43,6 +48,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import logcat.LogPriority
+import logcat.logcat
 import nl.adaptivity.xmlutil.serialization.XML
 import okhttp3.Response
 import tachiyomi.core.common.i18n.stringResource
@@ -66,10 +72,12 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.IOException
 import java.util.Locale
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlin.time.measureTime
 
 /**
  * This class is the one in charge of downloading chapters.
@@ -90,6 +98,14 @@ class Downloader(
     private val sourcePreferences: SourcePreferences = Injekt.get(),
     // SY <--
 ) {
+
+    private val comicTranslator = ComicTranslator(
+        context,
+        if (downloadPreferences.translateChapters()
+                .get() == 0
+        ) ScanLanguage.LATIN else ScanLanguage.entries[downloadPreferences.translateChapters().get() - 1],
+        LanguageTranslators.entries[downloadPreferences.translationEngine().get()],downloadPreferences.translationApiKey().get()
+    )
 
     /**
      * Store for persisting downloads across restarts.
@@ -139,7 +155,6 @@ class Downloader(
         if (isRunning || queueState.value.isEmpty()) {
             return false
         }
-
         val pending = queueState.value.filter { it.status != Download.State.DOWNLOADED }
         pending.forEach { if (it.status != Download.State.QUEUE) it.status = Download.State.QUEUE }
 
@@ -155,9 +170,7 @@ class Downloader(
      */
     fun stop(reason: String? = null) {
         cancelDownloaderJob()
-        queueState.value
-            .filter { it.status == Download.State.DOWNLOADING }
-            .forEach { it.status = Download.State.ERROR }
+        queueState.value.filter { it.status == Download.State.DOWNLOADING }.forEach { it.status = Download.State.ERROR }
 
         if (reason != null) {
             notifier.onWarning(reason)
@@ -180,9 +193,7 @@ class Downloader(
      */
     fun pause() {
         cancelDownloaderJob()
-        queueState.value
-            .filter { it.status == Download.State.DOWNLOADING }
-            .forEach { it.status = Download.State.QUEUE }
+        queueState.value.filter { it.status == Download.State.DOWNLOADING }.forEach { it.status = Download.State.QUEUE }
         isPaused = true
     }
 
@@ -207,17 +218,15 @@ class Downloader(
                 while (true) {
                     val activeDownloads = queue.asSequence()
                         .filter { it.status.value <= Download.State.DOWNLOADING.value } // Ignore completed downloads, leave them in the queue
-                        .groupBy { it.source }
-                        .toList().take(5) // Concurrently download from 5 different sources
+                        .groupBy { it.source }.toList().take(5) // Concurrently download from 5 different sources
                         .map { (_, downloads) -> downloads.first() }
                     emit(activeDownloads)
 
                     if (activeDownloads.isEmpty()) break
                     // Suspend until a download enters the ERROR state
-                    val activeDownloadsErroredFlow =
-                        combine(activeDownloads.map(Download::statusFlow)) { states ->
-                            states.contains(Download.State.ERROR)
-                        }.filter { it }
+                    val activeDownloadsErroredFlow = combine(activeDownloads.map(Download::statusFlow)) { states ->
+                        states.contains(Download.State.ERROR)
+                    }.filter { it }
                     activeDownloadsErroredFlow.first()
                 }
             }.distinctUntilChanged()
@@ -291,8 +300,7 @@ class Downloader(
             // Filter out those already enqueued.
             .filter { chapter -> queueState.value.none { it.chapter.id == chapter.id } }
             // Create a download for each one.
-            .map { Download(source, manga, it) }
-            .toList()
+            .map { Download(source, manga, it) }.toList()
 
         if (chaptersToQueue.isNotEmpty()) {
             addAllToQueue(chaptersToQueue)
@@ -300,15 +308,10 @@ class Downloader(
             // Start downloader if needed
             if (autoStart && wasEmpty) {
                 val queuedDownloads = queueState.value.count { it.source !is UnmeteredSource }
-                val maxDownloadsFromSource = queueState.value
-                    .groupBy { it.source }
-                    .filterKeys { it !is UnmeteredSource }
-                    .maxOfOrNull { it.value.size }
-                    ?: 0
-                if (
-                    queuedDownloads > DOWNLOADS_QUEUED_WARNING_THRESHOLD ||
-                    maxDownloadsFromSource > CHAPTERS_PER_SOURCE_QUEUE_WARNING_THRESHOLD
-                ) {
+                val maxDownloadsFromSource =
+                    queueState.value.groupBy { it.source }.filterKeys { it !is UnmeteredSource }
+                        .maxOfOrNull { it.value.size } ?: 0
+                if (queuedDownloads > DOWNLOADS_QUEUED_WARNING_THRESHOLD || maxDownloadsFromSource > CHAPTERS_PER_SOURCE_QUEUE_WARNING_THRESHOLD) {
                     notifier.onWarning(
                         context.stringResource(MR.strings.download_queue_size_warning),
                         WARNING_NOTIF_TIMEOUT_MS,
@@ -364,35 +367,30 @@ class Downloader(
             }
 
             // Delete all temporary (unfinished) files
-            tmpDir.listFiles()
-                ?.filter { it.extension == "tmp" }
-                ?.forEach { it.delete() }
+            tmpDir.listFiles()?.filter { it.extension == "tmp" }?.forEach { it.delete() }
 
             download.status = Download.State.DOWNLOADING
-
             // Start downloading images, consider we can have downloaded images already
             // Concurrently do 2 pages at a time
-            pageList.asFlow()
-                .flatMapMerge(concurrency = 2) { page ->
-                    flow {
-                        // Fetch image URL if necessary
-                        if (page.imageUrl.isNullOrEmpty()) {
-                            page.status = Page.State.LOAD_PAGE
-                            try {
-                                page.imageUrl = download.source.getImageUrl(page)
-                            } catch (e: Throwable) {
-                                page.status = Page.State.ERROR
-                            }
+            pageList.asFlow().flatMapMerge(concurrency = 2) { page ->
+                flow {
+                    // Fetch image URL if necessary
+                    if (page.imageUrl.isNullOrEmpty()) {
+                        page.status = Page.State.LOAD_PAGE
+                        try {
+                            page.imageUrl = download.source.getImageUrl(page)
+                        } catch (e: Throwable) {
+                            page.status = Page.State.ERROR
                         }
+                    }
 
-                        withIOContext { getOrDownloadImage(page, download, tmpDir, dataSaver) }
-                        emit(page)
-                    }.flowOn(Dispatchers.IO)
-                }
-                .collect {
-                    // Do when page is downloaded.
-                    notifier.onProgressChange(download)
-                }
+                    withIOContext { getOrDownloadImage(page, download, tmpDir, dataSaver) }
+                    emit(page)
+                }.flowOn(Dispatchers.IO)
+            }.collect {
+                // Do when page is downloaded.
+                notifier.onProgressChange(download)
+            }
 
             // Do after download completes
 
@@ -400,6 +398,18 @@ class Downloader(
                 download.status = Download.State.ERROR
                 return
             }
+            //Change HERE
+            tmpDir.listFiles().orEmpty().count {
+                val fileName = it.name.orEmpty()
+                when {
+                    fileName in listOf(COMIC_INFO_FILE, NOMEDIA_FILE) -> false
+                    fileName.endsWith(".tmp") -> false
+                    // Only count the first split page and not the others
+                    fileName.contains("__") && !fileName.endsWith("__001.jpg") -> false
+                    else -> true
+                }
+            }
+
 
             createComicInfoFile(
                 tmpDir,
@@ -457,8 +467,12 @@ class Downloader(
             // If the image is already downloaded, do nothing. Otherwise download from network
             val file = when {
                 imageFile != null -> imageFile
-                chapterCache.isImageInCache(page.imageUrl!!) ->
-                    copyImageFromCache(chapterCache.getImageFile(page.imageUrl!!), tmpDir, filename)
+                chapterCache.isImageInCache(page.imageUrl!!) -> copyImageFromCache(
+                    chapterCache.getImageFile(page.imageUrl!!),
+                    tmpDir,
+                    filename,
+                )
+
                 else -> downloadImage(page, download.source, tmpDir, filename, dataSaver)
             }
 
@@ -494,13 +508,32 @@ class Downloader(
     ): UniFile {
         page.status = Page.State.DOWNLOAD_IMAGE
         page.progress = 0
+        //ME CHANGE HERE
         return flow {
             val response = source.getImage(page, dataSaver)
             val file = tmpDir.createFile("$filename.tmp")!!
             try {
+                val scanLanguage = downloadPreferences.translateChapters().get()
+                val shouldTranslate = scanLanguage != 0;
                 response.body.source().saveTo(file.openOutputStream())
                 val extension = getImageExtension(response, file)
                 file.renameTo("$filename.$extension")
+
+                if (shouldTranslate) {
+                    try {
+                        val key = downloadPreferences.translationApiKey().get();
+                        val translationEngine = LanguageTranslators.entries[downloadPreferences.translationEngine().get()]
+                        if (ScanLanguage.entries[scanLanguage - 1] != comicTranslator.scanLanguage || translationEngine != comicTranslator.translationEngine||key!=comicTranslator.apiKey) {
+                            comicTranslator.update(ScanLanguage.entries[scanLanguage - 1], translationEngine,key)
+                        }
+                        val image = InputImage.fromFilePath(context, file.uri)
+                        comicTranslator.processImage(context, image, tmpDir, filename)
+
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+                }
+
             } catch (e: Exception) {
                 response.close()
                 file.delete()
@@ -519,8 +552,7 @@ class Downloader(
                 } else {
                     false
                 }
-            }
-            .first()
+            }.first()
     }
 
     /**
@@ -553,7 +585,7 @@ class Downloader(
     private fun getImageExtension(response: Response, file: UniFile): String {
         // Read content type if available.
         val mime = response.body.contentType()?.run { if (type == "image") "image/$subtype" else null }
-            // Else guess from the uri.
+        // Else guess from the uri.
             ?: context.contentResolver.getType(file.uri)
             // Else read magic numbers.
             ?: ImageUtil.findImageType { file.openInputStream() }?.mime
@@ -566,8 +598,9 @@ class Downloader(
 
         try {
             val filenamePrefix = "%03d".format(Locale.ENGLISH, page.number)
-            val imageFile = tmpDir.listFiles()?.firstOrNull { it.name.orEmpty().startsWith(filenamePrefix) }
-                ?: error(context.stringResource(MR.strings.download_notifier_split_page_not_found, page.number))
+            val imageFile = tmpDir.listFiles()?.firstOrNull { it.name.orEmpty().startsWith(filenamePrefix) } ?: error(
+                context.stringResource(MR.strings.download_notifier_split_page_not_found, page.number),
+            )
 
             // If the original page was previously split, then skip
             if (imageFile.name.orEmpty().startsWith("${filenamePrefix}__")) return
@@ -678,12 +711,11 @@ class Downloader(
             // using ImageUtils isImage and findImageType functions causes IO errors when deleting files to set Exif Metadata
             // it should be safe to assume that all files with image extensions are actual images at this point
             ?.filter {
-                it.extension.equals("jpg", true) ||
-                    it.extension.equals("jpeg", true) ||
-                    it.extension.equals("png", true) ||
-                    it.extension.equals("webp", true)
-            }
-            ?.forEach { ImageUtil.addPaddingToImageExif(it) }
+                it.extension.equals("jpg", true) || it.extension.equals("jpeg", true) || it.extension.equals(
+                    "png",
+                    true,
+                ) || it.extension.equals("webp", true)
+            }?.forEach { ImageUtil.addPaddingToImageExif(it) }
     }
     // SY <--
 
@@ -697,19 +729,16 @@ class Downloader(
         source: HttpSource,
     ) {
         val categories = getCategories.await(manga.id).map { it.name.trim() }.takeUnless { it.isEmpty() }
-        val urls = getTracks.await(manga.id)
-            .mapNotNull { track ->
-                track.remoteUrl.takeUnless { url -> url.isBlank() }?.trim()
-            }
-            .plus(source.getChapterUrl(chapter.toSChapter()).trim())
-            .distinct()
+        val urls = getTracks.await(manga.id).mapNotNull { track ->
+            track.remoteUrl.takeUnless { url -> url.isBlank() }?.trim()
+        }.plus(source.getChapterUrl(chapter.toSChapter()).trim()).distinct()
 
         val comicInfo = getComicInfo(
             manga,
             chapter,
             urls,
             categories,
-            source.name
+            source.name,
         )
 
         // Remove the old file

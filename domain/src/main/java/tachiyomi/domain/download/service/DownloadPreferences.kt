@@ -1,5 +1,6 @@
 package tachiyomi.domain.download.service
 
+import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 
 class DownloadPreferences(
@@ -16,7 +17,9 @@ class DownloadPreferences(
     fun splitTallImages() = preferenceStore.getBoolean("split_tall_images", false)
 
     fun autoDownloadWhileReading() = preferenceStore.getInt("auto_download_while_reading", 0)
-
+    fun translateChapters() = preferenceStore.getInt("auto_translate_on_download", 0)
+    fun translationEngine() = preferenceStore.getInt("auto_translation_engine", 0)
+    fun translationApiKey() = preferenceStore.getString("auto_translation_api_key", "")
     fun removeAfterReadSlots() = preferenceStore.getInt("remove_after_read_slots", -1)
 
     fun removeAfterMarkedAsRead() = preferenceStore.getBoolean(
