@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.data.download
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.google.mlkit.vision.common.InputImage
 import com.hippo.unifile.UniFile
 import eu.kanade.domain.chapter.model.toSChapter
@@ -45,6 +47,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.forEach
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
@@ -107,10 +112,11 @@ class Downloader(
         context,
         if (downloadPreferences.translateOnDownload()
                 .get()
-        ) ScanLanguage.LATIN else ScanLanguage.entries[downloadPreferences.translateLanguage().get() ],
-        LanguageTranslators.entries[downloadPreferences.translationEngine().get()],downloadPreferences.translationApiKey().get()
+        ) ScanLanguage.LATIN else ScanLanguage.entries[downloadPreferences.translateLanguage().get()],
+        LanguageTranslators.entries[downloadPreferences.translationEngine().get()],
+        downloadPreferences.translationApiKey().get(),
     )
-    private var shouldTranslate= false
+    private var shouldTranslate = false
 
     /**
      * Store for persisting downloads across restarts.
@@ -147,21 +153,22 @@ class Downloader(
         launchNow {
             val chapters = async { store.restore() }
             addAllToQueue(chapters.await())
-            downloadPreferences.translateOnDownload().changes().collect{
-                value->shouldTranslate=value
-            }
-            downloadPreferences.translateLanguage().changes().collect{
-                    value->comicTranslator.updateLanguage(ScanLanguage.entries[value])
-            }
-            downloadPreferences.translationApiKey().changes().collect{
-                    value->comicTranslator.updateAPIKey(value)
-            }
-            downloadPreferences.translationFont().changes().collect{
-                    value->comicTranslator.updateFont(context,value)
-            }
-            downloadPreferences.translationEngine().changes().collect{
-                    value->comicTranslator.updateEngine(LanguageTranslators.entries[value])
-            }
+            downloadPreferences.translateOnDownload().changes().onEach {
+                shouldTranslate = it
+            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+
+            downloadPreferences.translateLanguage().changes().onEach {
+                comicTranslator.updateLanguage(ScanLanguage.entries[it])
+            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+            downloadPreferences.translationApiKey().changes().onEach {
+                comicTranslator.updateAPIKey(it)
+            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+            downloadPreferences.translationFont().changes().onEach {
+                comicTranslator.updateFont(context, it)
+            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+            downloadPreferences.translationEngine().changes().onEach {
+                comicTranslator.updateEngine(LanguageTranslators.entries[it])
+            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
         }
     }
 
@@ -419,7 +426,7 @@ class Downloader(
                 return
             }
             //Translate and Render Images
-            if(downloadPreferences.translateOnDownload().get()) comicTranslator.processChapter(tmpDir.name!!,tmpDir)
+            if (downloadPreferences.translateOnDownload().get()) comicTranslator.processChapter(tmpDir.name!!, tmpDir)
 
 
             createComicInfoFile(

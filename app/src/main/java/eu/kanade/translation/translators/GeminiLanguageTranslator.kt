@@ -14,7 +14,7 @@ import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
 
 class GeminiLanguageTranslator(scanLanguage: ScanLanguage, var key: String) : LanguageTranslator {
-    private var apiKey = "AIzaSyD7EhXL6MF1xBcwiibwAZNZnFpvVs4dCes"
+    private var apiKey = ""
     private var model: GenerativeModel = GenerativeModel(
         modelName = "gemini-1.5-pro",
         apiKey = apiKey,

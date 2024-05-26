@@ -6,10 +6,13 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Point
+import android.graphics.text.LineBreakConfig
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.res.ResourcesCompat
+import com.google.common.collect.EvictingQueue
 
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text.TextBlock
@@ -22,6 +25,7 @@ import eu.kanade.translation.translators.LanguageTranslator
 import eu.kanade.translation.translators.MLKitLanguageTranslator
 import eu.kanade.translation.translators.TextRecognizer
 import tachiyomi.core.common.util.system.logcat
+import java.util.Deque
 
 
 class ComicTranslator(
@@ -32,11 +36,12 @@ class ComicTranslator(
 ) {
     private val queue= HashMap<String,HashMap<String,List<TextBlock>>>()
     private val pageImages= HashMap<String,HashMap<String,InputImage>>()
-    private var debug = false
+    private var debug = true
     private var recognizer = TextRecognizer(scanLanguage)
     private var languageTranslator: LanguageTranslator = getTranslator(translationEngine,scanLanguage,apiKey)
     private val textPaint = TextPaint()
-    private val fonts = intArrayOf(R.font.animeace,R.font.manga_master_bb,R.font.comic_book)
+    private val fonts = arrayOf( R.font.animeace,R.font.manga_master_bb,R.font.comic_book)
+    private val multipliers= arrayOf(0.9f,0.8f,0.8f)
 
     init {
         textPaint.color = Color.BLACK
@@ -45,7 +50,7 @@ class ComicTranslator(
 
     suspend fun queuePage(key:String,image: InputImage,filename: String) {
         val result = recognizer.recognize(image)
-        queue.getOrPut(key) { HashMap() }[filename] = result.textBlocks
+        queue.getOrPut(key) { HashMap() }[filename] = result.textBlocks.filter { it.boundingBox != null&&it.text.length>1 }
         pageImages.getOrPut(key) { HashMap() }[filename]= image
     }
     suspend fun processChapter(key:String,tmpDir: UniFile) {
@@ -90,47 +95,53 @@ class ComicTranslator(
         try {
             val bmp = image.bitmapInternal
             val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.RGB_565)
+            val points = EvictingQueue.create<Point>(4)
             val canvas = Canvas(bitmap)
             if (bmp != null) {
                 canvas.drawBitmap(bmp, 0F, 0F, null)
             }
             val bgPaint = Paint()
-            bgPaint.style = Paint.Style.STROKE
-            bgPaint.color = Color.BLACK
-
+            bgPaint.style = Paint.Style.FILL
+            bgPaint.color = Color.WHITE
+            val textMultiplier= 0.9f
             //Paint Background
             for (tBlock in blocks) {
-                if (debug) logcat { "Image OCR Translated : ${tBlock.translated}" }
                 val block = tBlock.block
+                val rect = block.boundingBox!!
                 val angle = block.lines.first().angle
-                val symbolRect = block.lines.first().elements.first().symbols.first().boundingBox!!
                 canvas.save()
-                canvas.translate(symbolRect.left.toFloat(), symbolRect.top.toFloat())
-                canvas.rotate(angle)
-                for (line in block.lines) {
-                    val r = line.boundingBox!!
-                    canvas.drawRect(0f,0f,  r.width().toFloat(), r.height().toFloat(), bgPaint)
-                }
+                if(angle<89) canvas.rotate(angle,rect.centerX().toFloat(),rect.centerY().toFloat())
+                canvas.drawRect(rect, bgPaint)
                 canvas.restore()
             }
+
             for (tBlock in blocks) {
+                if (debug) logcat { "Image OCR Translated : ${tBlock.translated}" }
                 val block = tBlock.block
                 val rect = block.boundingBox ?: continue
                 val text = tBlock.translated
                 val angle = block.lines.first().angle
                 val symbolRect = block.lines.first().elements.first().symbols.first().boundingBox!!
-                textPaint.textSize = symbolRect.height().toFloat()
+                val left=(symbolRect.left.toFloat()-rect.width()*0.15f).coerceAtLeast(0f)
+                var top = (symbolRect.top.toFloat()-rect.height()*0.15f).coerceAtLeast(0f)
+                textPaint.textSize = symbolRect.height().toFloat()*textMultiplier
                 canvas.save()
-                canvas.translate(symbolRect.left.toFloat(), symbolRect.top.toFloat())
+                for (point in points) {
+                    if(point.y-top>=0&&point.x-left>-30&& point.x-left<30){
+                        top+=5+point.y-top
+                        break;
+                    }
+                }
+                canvas.translate(left,top)
                 //Rotate Text
-                canvas.rotate(angle)
-
+                if(angle<89) canvas.rotate(angle)
                 //Static Layout for Text Wrapping
-                val builder = StaticLayout.Builder.obtain(text, 0, text.length, textPaint, rect.width())
+                val builder = StaticLayout.Builder.obtain(text, 0, text.length, textPaint, (rect.width()*1.3).toInt())
                     .setAlignment(Layout.Alignment.ALIGN_CENTER)
-                    .setLineSpacing(1f, 1f)
-                    .setIncludePad(false)
+                    .setBreakStrategy(Layout.BREAK_STRATEGY_BALANCED)
                 val layout = builder.build()
+                points.add(Point(left.toInt(), (top+layout.height).toInt()))
+
                 layout.draw(canvas)
                 canvas.restore()
             }
