@@ -183,7 +183,7 @@ class MangaScreenModel(
     private val mangaRepository: MangaRepository = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
-
+    val translationEnabled  get() =downloadPreferences.translateOnDownload().get()
     private val successState: State.Success?
         get() = state.value as? State.Success
 

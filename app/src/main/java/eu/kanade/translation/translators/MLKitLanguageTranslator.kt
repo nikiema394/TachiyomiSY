@@ -9,6 +9,7 @@ import com.google.mlkit.nl.translate.TranslatorOptions
 import com.google.mlkit.vision.text.Text.TextBlock
 import eu.kanade.translation.ScanLanguage
 import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
 
 class MLKitLanguageTranslator(scanLanguage: ScanLanguage) : LanguageTranslator {
@@ -18,14 +19,14 @@ class MLKitLanguageTranslator(scanLanguage: ScanLanguage) : LanguageTranslator {
             .build(),
     )
     private var conditions = DownloadConditions.Builder().build()
-    override suspend fun translate(blocks: List<TextBlock>) :ArrayList<TextTranslation>  {
-        val list =ArrayList<TextTranslation>()
+    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>> {
         try {
             translator.downloadModelIfNeeded(conditions).await()
-            blocks.forEach { block ->   list.add(TextTranslation(block,translator.translate(block.text.replace("\n"," ")).await()))}
+            val result = pages.mapValues { (k,v)->v.map {  b->TextTranslation(b,translator.translate(b.text.replace("\n"," ")).await()) }}
+            return result
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return list;
+        return HashMap()
     }
 }

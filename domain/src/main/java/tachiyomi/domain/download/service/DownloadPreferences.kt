@@ -6,6 +6,13 @@ import tachiyomi.core.common.preference.PreferenceStore
 class DownloadPreferences(
     private val preferenceStore: PreferenceStore,
 ) {
+    //Translation Settings
+    fun translateOnDownload() = preferenceStore.getBoolean("auto_translate_on_download", false)
+    fun translateLanguage() = preferenceStore.getInt("auto_translate_language", 0)
+    fun translationFont() = preferenceStore.getInt("auto_translate_font",0)
+    fun translationEngine() = preferenceStore.getInt("auto_translation_engine", 0)
+    fun translationApiKey() = preferenceStore.getString("auto_translation_api_key", "")
+
 
     fun downloadOnlyOverWifi() = preferenceStore.getBoolean(
         "pref_download_only_over_wifi_key",
@@ -17,9 +24,7 @@ class DownloadPreferences(
     fun splitTallImages() = preferenceStore.getBoolean("split_tall_images", false)
 
     fun autoDownloadWhileReading() = preferenceStore.getInt("auto_download_while_reading", 0)
-    fun translateChapters() = preferenceStore.getInt("auto_translate_on_download", 0)
-    fun translationEngine() = preferenceStore.getInt("auto_translation_engine", 0)
-    fun translationApiKey() = preferenceStore.getString("auto_translation_api_key", "")
+
     fun removeAfterReadSlots() = preferenceStore.getInt("remove_after_read_slots", -1)
 
     fun removeAfterMarkedAsRead() = preferenceStore.getBoolean(

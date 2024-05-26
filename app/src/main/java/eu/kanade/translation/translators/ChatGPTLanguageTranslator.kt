@@ -28,24 +28,17 @@ import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
 import kotlin.jvm.internal.Intrinsics
 
-class ChatGPTLanguageTranslator(scanLanguage: ScanLanguage, var apiKey: String) : LanguageTranslator {
-    override suspend fun translate(blocks: List<TextBlock>): ArrayList<TextTranslation> {
-        val list = ArrayList<TextTranslation>()
+class ChatGPTLanguageTranslator(scanLanguage: ScanLanguage, private var apiKey: String) : LanguageTranslator {
+    //TODO IMRPOVE THIS ONE ONCE I GOT A API KEY
+    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>> {
         try {
-            blocks.forEach { block ->
-                list.add(
-                    TextTranslation(
-                        block,
-                        translateText(block.text.replace("\n", " ")),
-                    ),
-                )
-            }
+            val result = pages.mapValues { (k,v)->v.map {  b->TextTranslation(b,translateText(b.text.replace("\n", " "))) }}
+            return result
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return list;
+        return HashMap()
     }
-
     private suspend fun translateText(text: String): String {
         try {
             val okHttpClient = OkHttpClient()

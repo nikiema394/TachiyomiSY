@@ -59,8 +59,6 @@ object SettingsDownloadScreen : SearchableSettings {
                 downloadPreferences = downloadPreferences,
                 categories = allCategories,
             ),
-            getTranslateChaptersGroup(downloadPreferences = downloadPreferences),
-            getTranslateChaptersApiGroup(downloadPreferences = downloadPreferences),
             getAutoDownloadGroup(
                 downloadPreferences = downloadPreferences,
                 allCategories = allCategories,
@@ -193,57 +191,6 @@ object SettingsDownloadScreen : SearchableSettings {
                         .toImmutableMap(),
                 ),
                 Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.download_ahead_info)),
-            ),
-        )
-    }
-
-    @Composable
-    private fun getTranslateChaptersGroup(
-        downloadPreferences: DownloadPreferences,
-    ): Preference.PreferenceGroup {
-        val opts = listOf("Chinese", "Japanese", "Korean", "Latin")
-        return Preference.PreferenceGroup(
-            title = "Translate Chapters",
-            preferenceItems = persistentListOf(
-                Preference.PreferenceItem.ListPreference(
-                    pref = downloadPreferences.translateChapters(),
-                    title = "Translate Chapters While Downloading",
-
-                    entries = listOf(0, 1, 2, 3, 4)
-                        .associateWith {
-                            if (it == 0) {
-                                "Disabled"
-                            } else {
-                                opts[it - 1]
-                            }
-                        }
-                        .toImmutableMap(),
-                ),
-            ),
-        )
-    }
-
-    @Composable
-    private fun getTranslateChaptersApiGroup(
-        downloadPreferences: DownloadPreferences,
-    ): Preference.PreferenceGroup {
-        val opts = LanguageTranslators.entries.map { v -> v.name }
-        return Preference.PreferenceGroup(
-            title = "Translation Engine",
-            preferenceItems = persistentListOf(
-                Preference.PreferenceItem.ListPreference(
-                    pref = downloadPreferences.translationEngine(),
-                    title = "Translation Engine",
-                    entries = listOf(0, 1, 2, 3, 4)
-                        .associateWith {
-                            opts[it]
-                        }
-                        .toImmutableMap(),
-                ),
-                Preference.PreferenceItem.EditTextPreference(
-                    pref = downloadPreferences.translationApiKey(),
-                    title = "Translator API Key",
-                    ),
             ),
         )
     }

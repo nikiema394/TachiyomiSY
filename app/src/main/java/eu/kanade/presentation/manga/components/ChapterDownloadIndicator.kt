@@ -52,7 +52,7 @@ fun ChapterDownloadIndicator(
     downloadStateProvider: () -> Download.State,
     downloadProgressProvider: () -> Int,
     onClick: (ChapterDownloadAction) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier,translationEnabled: Boolean =false
 ) {
     when (val downloadState = downloadStateProvider()) {
         Download.State.NOT_DOWNLOADED -> NotDownloadedIndicator(
@@ -65,7 +65,7 @@ fun ChapterDownloadIndicator(
             modifier = modifier,
             downloadState = downloadState,
             downloadProgressProvider = downloadProgressProvider,
-            onClick = onClick,
+            onClick = onClick, translationEnabled=translationEnabled
         )
         Download.State.DOWNLOADED -> DownloadedIndicator(
             enabled = enabled,
@@ -113,7 +113,7 @@ private fun DownloadingIndicator(
     downloadState: Download.State,
     downloadProgressProvider: () -> Int,
     onClick: (ChapterDownloadAction) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier,translationEnabled: Boolean =false
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     Box(
@@ -154,7 +154,7 @@ private fun DownloadingIndicator(
             CircularProgressIndicator(
                 progress = { animatedProgress },
                 modifier = IndicatorModifier,
-                color = strokeColor,
+                color = if(translationEnabled && animatedProgress==1f) Color.hsv(157f, 0.52f, 0.68f) else strokeColor,
                 strokeWidth = IndicatorSize / 2,
                 trackColor = Color.Transparent,
                 strokeCap = StrokeCap.Butt,

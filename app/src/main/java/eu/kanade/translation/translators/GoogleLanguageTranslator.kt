@@ -8,6 +8,7 @@ import androidx.media3.extractor.ts.PsExtractor
 import com.google.mlkit.vision.text.Text.TextBlock
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.translation.ScanLanguage
+import kotlinx.coroutines.tasks.await
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -19,25 +20,15 @@ import kotlin.jvm.internal.Intrinsics
 class GoogleLanguageTranslator(scanLanguage: ScanLanguage) : LanguageTranslator {
     private val client1 = "gtx"
     private val client2 = "webapp"
-
-    override suspend fun translate(blocks: List<TextBlock>): ArrayList<TextTranslation> {
-        val list = ArrayList<TextTranslation>()
+    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>> {
         try {
-
-            blocks.forEach { block ->
-                list.add(
-                    TextTranslation(
-                        block,
-                        translateText("en",block.text.replace("\n", " ")),
-                    ),
-                )
-            }
+            val result = pages.mapValues { (k,v)->v.map {  b->TextTranslation(b,translateText("en",b.text.replace("\n", " "))) }}
+            return result
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return list;
+        return HashMap()
     }
-
     private fun rshift(j: Long, j2: Long): Long {
         var j = j
         if (j < 0) {

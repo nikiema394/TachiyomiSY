@@ -156,6 +156,7 @@ class MangaScreen(
             chapterSwipeEndAction = screenModel.chapterSwipeEndAction,
             onBackClicked = navigator::pop,
             onChapterClicked = { openChapter(context, it) },
+
             onDownloadChapter = screenModel::runChapterDownloadActions.takeIf { !successState.source.isLocalOrStub() },
             onAddToLibraryClicked = {
                 screenModel.toggleFavorite()
@@ -226,6 +227,7 @@ class MangaScreen(
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
+            translationEnabled=screenModel.translationEnabled
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }

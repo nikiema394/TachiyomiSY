@@ -67,7 +67,7 @@ fun MangaChapterListItem(
     onClick: () -> Unit,
     onDownloadClick: ((ChapterDownloadAction) -> Unit)?,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier,translationEnabled: Boolean =false
 ) {
     val textAlpha = if (read) ReadItemAlpha else 1f
     val textSubtitleAlpha = if (read) ReadItemAlpha else SecondaryItemAlpha
@@ -188,7 +188,7 @@ fun MangaChapterListItem(
                 modifier = Modifier.padding(start = 4.dp),
                 downloadStateProvider = downloadStateProvider,
                 downloadProgressProvider = downloadProgressProvider,
-                onClick = { onDownloadClick?.invoke(it) },
+                onClick = { onDownloadClick?.invoke(it) },translationEnabled=translationEnabled
             )
         }
     }

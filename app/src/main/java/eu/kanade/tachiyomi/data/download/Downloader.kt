@@ -21,11 +21,13 @@ import eu.kanade.tachiyomi.util.storage.saveTo
 import eu.kanade.translation.ComicTranslator
 import eu.kanade.translation.LanguageTranslators
 import eu.kanade.translation.ScanLanguage
+import eu.kanade.translation.translators.LanguageTranslator
 import exh.source.isEhBasedSource
 import exh.util.DataSaver
 import exh.util.DataSaver.Companion.getImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -34,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -84,6 +87,7 @@ import kotlin.time.measureTime
  *
  * Its queue contains the list of chapters to download.
  */
+@OptIn(DelicateCoroutinesApi::class)
 class Downloader(
     private val context: Context,
     private val provider: DownloadProvider,
@@ -101,11 +105,12 @@ class Downloader(
 
     private val comicTranslator = ComicTranslator(
         context,
-        if (downloadPreferences.translateChapters()
-                .get() == 0
-        ) ScanLanguage.LATIN else ScanLanguage.entries[downloadPreferences.translateChapters().get() - 1],
+        if (downloadPreferences.translateOnDownload()
+                .get()
+        ) ScanLanguage.LATIN else ScanLanguage.entries[downloadPreferences.translateLanguage().get() ],
         LanguageTranslators.entries[downloadPreferences.translationEngine().get()],downloadPreferences.translationApiKey().get()
     )
+    private var shouldTranslate= false
 
     /**
      * Store for persisting downloads across restarts.
@@ -142,6 +147,21 @@ class Downloader(
         launchNow {
             val chapters = async { store.restore() }
             addAllToQueue(chapters.await())
+            downloadPreferences.translateOnDownload().changes().collect{
+                value->shouldTranslate=value
+            }
+            downloadPreferences.translateLanguage().changes().collect{
+                    value->comicTranslator.updateLanguage(ScanLanguage.entries[value])
+            }
+            downloadPreferences.translationApiKey().changes().collect{
+                    value->comicTranslator.updateAPIKey(value)
+            }
+            downloadPreferences.translationFont().changes().collect{
+                    value->comicTranslator.updateFont(context,value)
+            }
+            downloadPreferences.translationEngine().changes().collect{
+                    value->comicTranslator.updateEngine(LanguageTranslators.entries[value])
+            }
         }
     }
 
@@ -398,17 +418,8 @@ class Downloader(
                 download.status = Download.State.ERROR
                 return
             }
-            //Change HERE
-            tmpDir.listFiles().orEmpty().count {
-                val fileName = it.name.orEmpty()
-                when {
-                    fileName in listOf(COMIC_INFO_FILE, NOMEDIA_FILE) -> false
-                    fileName.endsWith(".tmp") -> false
-                    // Only count the first split page and not the others
-                    fileName.contains("__") && !fileName.endsWith("__001.jpg") -> false
-                    else -> true
-                }
-            }
+            //Translate and Render Images
+            if(downloadPreferences.translateOnDownload().get()) comicTranslator.processChapter(tmpDir.name!!,tmpDir)
 
 
             createComicInfoFile(
@@ -513,22 +524,13 @@ class Downloader(
             val response = source.getImage(page, dataSaver)
             val file = tmpDir.createFile("$filename.tmp")!!
             try {
-                val scanLanguage = downloadPreferences.translateChapters().get()
-                val shouldTranslate = scanLanguage != 0;
                 response.body.source().saveTo(file.openOutputStream())
                 val extension = getImageExtension(response, file)
                 file.renameTo("$filename.$extension")
-
                 if (shouldTranslate) {
                     try {
-                        val key = downloadPreferences.translationApiKey().get();
-                        val translationEngine = LanguageTranslators.entries[downloadPreferences.translationEngine().get()]
-                        if (ScanLanguage.entries[scanLanguage - 1] != comicTranslator.scanLanguage || translationEngine != comicTranslator.translationEngine||key!=comicTranslator.apiKey) {
-                            comicTranslator.update(ScanLanguage.entries[scanLanguage - 1], translationEngine,key)
-                        }
                         val image = InputImage.fromFilePath(context, file.uri)
-                        comicTranslator.processImage(context, image, tmpDir, filename)
-
+                        comicTranslator.queuePage(tmpDir.name!!, image, "$filename.$extension")
                     } catch (e: IOException) {
                         e.printStackTrace()
                     }

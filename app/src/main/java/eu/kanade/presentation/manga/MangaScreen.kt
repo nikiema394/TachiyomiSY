@@ -167,6 +167,7 @@ fun MangaScreen(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    translationEnabled: Boolean =false
 ) {
     val context = LocalContext.current
     val onCopyTagToClipboard: (tag: String) -> Unit = {
@@ -219,7 +220,7 @@ fun MangaScreen(
             onChapterSwipe = onChapterSwipe,
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
-            onInvertSelection = onInvertSelection,
+            onInvertSelection = onInvertSelection,translationEnabled
         )
     } else {
         MangaScreenLargeImpl(
@@ -266,6 +267,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
+            translationEnabled=translationEnabled
         )
     }
 }
@@ -328,6 +330,7 @@ private fun MangaScreenSmallImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    translationEnabled: Boolean =false,
 ) {
     val chapterListState = rememberLazyListState()
 
@@ -589,6 +592,7 @@ private fun MangaScreenSmallImpl(
                         onDownloadChapter = onDownloadChapter,
                         onChapterSelected = onChapterSelected,
                         onChapterSwipe = onChapterSwipe,
+                        translationEnabled=translationEnabled
                     )
                 }
             }
@@ -654,6 +658,7 @@ fun MangaScreenLargeImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    translationEnabled: Boolean =false
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
@@ -890,7 +895,7 @@ fun MangaScreenLargeImpl(
                                 onChapterClicked = onChapterClicked,
                                 onDownloadChapter = onDownloadChapter,
                                 onChapterSelected = onChapterSelected,
-                                onChapterSwipe = onChapterSwipe,
+                                onChapterSwipe = onChapterSwipe, translationEnabled=translationEnabled
                             )
                         }
                     }
@@ -954,7 +959,7 @@ private fun LazyListScope.sharedChapterItems(
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
-    onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,
+    onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,translationEnabled:Boolean=false
 ) {
     items(
         items = chapters,
@@ -967,7 +972,6 @@ private fun LazyListScope.sharedChapterItems(
         contentType = { MangaScreenItem.CHAPTER },
     ) { item ->
         val haptic = LocalHapticFeedback.current
-
         when (item) {
             is ChapterList.MissingCount -> {
                 MissingChapterCountListItem(count = item.count)
@@ -1035,7 +1039,7 @@ private fun LazyListScope.sharedChapterItems(
                     },
                     onChapterSwipe = {
                         onChapterSwipe(item, it)
-                    },
+                    }, translationEnabled=translationEnabled
                 )
             }
         }

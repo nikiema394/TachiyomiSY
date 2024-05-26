@@ -85,7 +85,7 @@ fun ChapterListDialog(
                     onDownloadClick = null,
                     onChapterSwipe = {
                         onBookmark(chapterItem.chapter)
-                    },
+                    }, 
                 )
             }
         }
