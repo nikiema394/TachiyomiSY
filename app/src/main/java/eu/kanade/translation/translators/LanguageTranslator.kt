@@ -6,5 +6,5 @@ import com.google.mlkit.vision.text.Text.TextBlock
 
 interface LanguageTranslator {
 
-    suspend fun translate(pages:   HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>>
+    suspend fun translate(pages:   HashMap<String, List<TextTranslation>>)
 }

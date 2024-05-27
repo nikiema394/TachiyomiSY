@@ -43,7 +43,7 @@ object SettingsTranslationScreen : SearchableSettings {
         return listOf(
             Preference.PreferenceItem.SwitchPreference(
                 pref = downloadPreferences.translateOnDownload(),
-                title = "Auto Translate",
+                title = "Auto Translate On Download",
             ),
             getTranslateLanguage(downloadPreferences = downloadPreferences),
             getTranslateFont(downloadPreferences = downloadPreferences),

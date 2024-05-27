@@ -1,7 +1,10 @@
-import com.google.mlkit.vision.text.Text.TextBlock
+import android.graphics.Rect
 class TextTranslation (
-    val block: TextBlock,
-    var translated: String,
+    var text: String,
+    val bounds: Rect,
+    val symbolBound: Rect,
+    val angle: Float,
+    var translated: String ="",
 ) {
 
 

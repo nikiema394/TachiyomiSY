@@ -45,7 +45,12 @@ import tachiyomi.presentation.core.components.material.ReadItemAlpha
 import tachiyomi.presentation.core.components.material.SecondaryItemAlpha
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.selectedBackground
-
+enum class TranslationState(val value: Int) {
+    NOT_TRANSLATED(0),
+    TRANSLATING(1),
+    TRANSLATED(2),
+    ERROR(3),
+}
 @Composable
 fun MangaChapterListItem(
     title: String,
@@ -60,12 +65,14 @@ fun MangaChapterListItem(
     selected: Boolean,
     downloadIndicatorEnabled: Boolean,
     downloadStateProvider: () -> Download.State,
+    translationStateProvider: () -> TranslationState,
     downloadProgressProvider: () -> Int,
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
     onLongClick: () -> Unit,
     onClick: () -> Unit,
     onDownloadClick: ((ChapterDownloadAction) -> Unit)?,
+    onTranslateClick: ((ChapterTranslationAction) -> Unit)?,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
     modifier: Modifier = Modifier,translationEnabled: Boolean =false
 ) {
@@ -182,7 +189,12 @@ fun MangaChapterListItem(
                     }
                 }
             }
-
+            if(downloadStateProvider()==Download.State.DOWNLOADED)ChapterTranslationIndicator(
+                enabled = downloadIndicatorEnabled,
+                modifier = Modifier.padding(start = 4.dp),
+                translationStateProvider=translationStateProvider,
+                onClick = { onTranslateClick?.invoke(it) }
+            )
             ChapterDownloadIndicator(
                 enabled = downloadIndicatorEnabled,
                 modifier = Modifier.padding(start = 4.dp),

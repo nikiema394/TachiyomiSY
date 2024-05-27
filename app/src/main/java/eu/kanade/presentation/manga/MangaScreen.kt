@@ -52,6 +52,7 @@ import androidx.compose.ui.util.fastMap
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterHeader
+import eu.kanade.presentation.manga.components.ChapterTranslationAction
 import eu.kanade.presentation.manga.components.ExpandableMangaDescription
 import eu.kanade.presentation.manga.components.MangaActionRow
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
@@ -120,6 +121,7 @@ fun MangaScreen(
     onBackClicked: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((ChapterList.Item, ChapterTranslationAction) -> Unit)?,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -167,7 +169,7 @@ fun MangaScreen(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
-    translationEnabled: Boolean =false
+    translationEnabled: Boolean = false,
 ) {
     val context = LocalContext.current
     val onCopyTagToClipboard: (tag: String) -> Unit = {
@@ -220,7 +222,9 @@ fun MangaScreen(
             onChapterSwipe = onChapterSwipe,
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
-            onInvertSelection = onInvertSelection,translationEnabled
+            onInvertSelection = onInvertSelection,
+            translationEnabled = translationEnabled,
+            onTranslateChapter = onTranslateChapter,
         )
     } else {
         MangaScreenLargeImpl(
@@ -267,7 +271,8 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
-            translationEnabled=translationEnabled
+            translationEnabled = translationEnabled,
+            onTranslateChapter = onTranslateChapter,
         )
     }
 }
@@ -282,6 +287,7 @@ private fun MangaScreenSmallImpl(
     onBackClicked: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((ChapterList.Item, ChapterTranslationAction) -> Unit)?,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -330,7 +336,7 @@ private fun MangaScreenSmallImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
-    translationEnabled: Boolean =false,
+    translationEnabled: Boolean = false,
 ) {
     val chapterListState = rememberLazyListState()
 
@@ -592,7 +598,7 @@ private fun MangaScreenSmallImpl(
                         onDownloadChapter = onDownloadChapter,
                         onChapterSelected = onChapterSelected,
                         onChapterSwipe = onChapterSwipe,
-                        translationEnabled=translationEnabled
+                        translationEnabled = translationEnabled, onTranslateChapter = onTranslateChapter,
                     )
                 }
             }
@@ -610,6 +616,7 @@ fun MangaScreenLargeImpl(
     onBackClicked: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((ChapterList.Item, ChapterTranslationAction) -> Unit)?,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -658,7 +665,7 @@ fun MangaScreenLargeImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
-    translationEnabled: Boolean =false
+    translationEnabled: Boolean = false,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
@@ -895,7 +902,8 @@ fun MangaScreenLargeImpl(
                                 onChapterClicked = onChapterClicked,
                                 onDownloadChapter = onDownloadChapter,
                                 onChapterSelected = onChapterSelected,
-                                onChapterSwipe = onChapterSwipe, translationEnabled=translationEnabled
+                                onChapterSwipe = onChapterSwipe, translationEnabled = translationEnabled,
+                                onTranslateChapter = onTranslateChapter,
                             )
                         }
                     }
@@ -958,8 +966,10 @@ private fun LazyListScope.sharedChapterItems(
     // SY <--
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((ChapterList.Item, ChapterTranslationAction) -> Unit)?,
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
-    onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,translationEnabled:Boolean=false
+    onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,
+    translationEnabled: Boolean = false,
 ) {
     items(
         items = chapters,
@@ -976,6 +986,7 @@ private fun LazyListScope.sharedChapterItems(
             is ChapterList.MissingCount -> {
                 MissingChapterCountListItem(count = item.count)
             }
+
             is ChapterList.Item -> {
                 MangaChapterListItem(
                     title = if (manga.displayMode == Manga.CHAPTER_DISPLAY_NUMBER) {
@@ -1037,9 +1048,16 @@ private fun LazyListScope.sharedChapterItems(
                     } else {
                         null
                     },
+                    onTranslateClick = if (onTranslateChapter != null) {
+                        { onTranslateChapter(item, it) }
+                    } else {
+                        null
+                    },
                     onChapterSwipe = {
                         onChapterSwipe(item, it)
-                    }, translationEnabled=translationEnabled
+                    },
+                    translationStateProvider = { item.translationState },
+                    translationEnabled = translationEnabled,
                 )
             }
         }
@@ -1074,24 +1092,31 @@ fun metadataDescription(source: Source): MetadataDescriptionComposable? {
             is EHentai -> { state, openMetadataViewer, search ->
                 EHentaiDescription(state, openMetadataViewer, search)
             }
+
             is MangaDex -> { state, openMetadataViewer, _ ->
                 MangaDexDescription(state, openMetadataViewer)
             }
+
             is NHentai -> { state, openMetadataViewer, _ ->
                 NHentaiDescription(state, openMetadataViewer)
             }
+
             is EightMuses -> { state, openMetadataViewer, _ ->
                 EightMusesDescription(state, openMetadataViewer)
             }
+
             is HBrowse -> { state, openMetadataViewer, _ ->
                 HBrowseDescription(state, openMetadataViewer)
             }
+
             is Pururin -> { state, openMetadataViewer, _ ->
                 PururinDescription(state, openMetadataViewer)
             }
+
             is Tsumino -> { state, openMetadataViewer, _ ->
                 TsuminoDescription(state, openMetadataViewer)
             }
+
             else -> null
         }
     }

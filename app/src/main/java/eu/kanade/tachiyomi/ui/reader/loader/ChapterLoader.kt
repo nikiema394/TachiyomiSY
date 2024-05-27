@@ -45,7 +45,7 @@ class ChapterLoader(
         if (chapterIsReady(chapter)) {
             return
         }
-
+        //CHANGE HERE : load translations from files like 001.ts
         chapter.state = ReaderChapter.State.Loading
         withIOContext {
             logcat { "Loading pages for ${chapter.chapter.name}" }

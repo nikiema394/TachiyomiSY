@@ -35,19 +35,18 @@ class GeminiLanguageTranslator(scanLanguage: ScanLanguage, var key: String) : La
     );
     private var chat = model.startChat()
 
-    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>>{
+    override suspend fun translate(pages: HashMap<String, List<TextTranslation>>){
         try {
-            val data= pages.mapValues { (k,v)->v.map { b -> b.text .replace("\n"," ")}}
+            val data= pages.mapValues { (k,v)->v.map { b -> b.text}}
             val json = JSONObject(data)
             val response = chat.sendMessage(json.toString())
             val resJson = JSONObject("${response.text}")
+            pages.forEach { (k,v)->v.forEachIndexed{ i,b->b.translated=resJson.getJSONArray(k).getString(i) }}
 
-            val result = pages.mapValues { (k,v)->v.mapIndexed { i,b->TextTranslation(b,resJson.getJSONArray(k).getString(i)) }}
-            return result
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return HashMap()
+
     }
 
 

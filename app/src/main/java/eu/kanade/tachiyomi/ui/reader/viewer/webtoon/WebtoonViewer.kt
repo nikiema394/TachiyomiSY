@@ -20,6 +20,7 @@ import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation.NavigationRegion
+import eu.kanade.translation.translators.ScanTextDialog
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import tachiyomi.core.common.util.system.logcat
@@ -67,7 +68,7 @@ class WebtoonViewer(
      * Adapter of the recycler view.
      */
     private val adapter = WebtoonAdapter(this)
-
+//    private val scrollDialog = ScanTextDialog(this);
     /**
      * Distance to scroll when the user taps on one side of the recycler view.
      */
@@ -170,6 +171,7 @@ class WebtoonViewer(
 
         frame.layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         frame.addView(recycler)
+//        frame.addView()
     }
 
     private fun checkAllowPreload(page: ReaderPage?): Boolean {

@@ -100,6 +100,7 @@ class Downloader(
     private val sourceManager: SourceManager = Injekt.get(),
     private val chapterCache: ChapterCache = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
+    private val comicTranslator: ComicTranslator= Injekt.get(),
     private val xml: XML = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getTracks: GetTracks = Injekt.get(),
@@ -108,14 +109,7 @@ class Downloader(
     // SY <--
 ) {
 
-    private val comicTranslator = ComicTranslator(
-        context,
-        if (downloadPreferences.translateOnDownload()
-                .get()
-        ) ScanLanguage.LATIN else ScanLanguage.entries[downloadPreferences.translateLanguage().get()],
-        LanguageTranslators.entries[downloadPreferences.translationEngine().get()],
-        downloadPreferences.translationApiKey().get(),
-    )
+
     private var shouldTranslate = false
 
     /**
@@ -394,7 +388,7 @@ class Downloader(
             }
 
             // Delete all temporary (unfinished) files
-            tmpDir.listFiles()?.filter { it.extension == "tmp" }?.forEach { it.delete() }
+            tmpDir.listFiles()?.filter { it.extension == "tmp" || it.extension == "bkp" }?.forEach { it.delete() }
 
             download.status = Download.State.DOWNLOADING
             // Start downloading images, consider we can have downloaded images already
@@ -472,7 +466,6 @@ class Downloader(
         val digitCount = (download.pages?.size ?: 0).toString().length.coerceAtLeast(3)
         val filename = "%0${digitCount}d".format(Locale.ENGLISH, page.number)
         val tmpFile = tmpDir.findFile("$filename.tmp")
-
         // Delete temp file if it exists
         tmpFile?.delete()
 

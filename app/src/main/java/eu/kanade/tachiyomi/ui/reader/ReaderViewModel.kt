@@ -134,7 +134,7 @@ class ReaderViewModel @JvmOverloads constructor(
     private val getMergedMangaById: GetMergedMangaById = Injekt.get(),
     private val getMergedReferencesById: GetMergedReferencesById = Injekt.get(),
     private val getMergedChaptersByMangaId: GetMergedChaptersByMangaId = Injekt.get(),
-    private val setReadStatus: SetReadStatus = Injekt.get()
+    private val setReadStatus: SetReadStatus = Injekt.get(),
     // SY <--
 ) : ViewModel() {
 
@@ -189,8 +189,9 @@ class ReaderViewModel @JvmOverloads constructor(
         // SY -->
         val (chapters, mangaMap) = runBlocking {
             if (manga.source == MERGED_SOURCE_ID) {
-                getMergedChaptersByMangaId.await(manga.id, applyScanlatorFilter = true) to getMergedMangaById.await(manga.id)
-                    .associateBy { it.id }
+                getMergedChaptersByMangaId.await(manga.id, applyScanlatorFilter = true) to getMergedMangaById.await(
+                    manga.id,
+                ).associateBy { it.id }
             } else {
                 getChaptersByMangaId.await(manga.id, applyScanlatorFilter = true) to null
             }
@@ -215,21 +216,15 @@ class ReaderViewModel @JvmOverloads constructor(
                     when {
                         readerPreferences.skipRead().get() && it.read -> true
                         readerPreferences.skipFiltered().get() -> {
-                            (manga.unreadFilterRaw == Manga.CHAPTER_SHOW_READ && !it.read) ||
-                                (manga.unreadFilterRaw == Manga.CHAPTER_SHOW_UNREAD && it.read) ||
+                            (manga.unreadFilterRaw == Manga.CHAPTER_SHOW_READ && !it.read) || (manga.unreadFilterRaw == Manga.CHAPTER_SHOW_UNREAD && it.read) ||
                                 // SY -->
-                                (
-                                    manga.downloadedFilterRaw == Manga.CHAPTER_SHOW_DOWNLOADED &&
-                                        !isChapterDownloaded(it)
-                                    ) ||
-                                (
-                                    manga.downloadedFilterRaw == Manga.CHAPTER_SHOW_NOT_DOWNLOADED &&
-                                        isChapterDownloaded(it)
-                                    ) ||
+                                (manga.downloadedFilterRaw == Manga.CHAPTER_SHOW_DOWNLOADED && !isChapterDownloaded(it)) || (manga.downloadedFilterRaw == Manga.CHAPTER_SHOW_NOT_DOWNLOADED && isChapterDownloaded(
+                                it,
+                            )) ||
                                 // SY <--
-                                (manga.bookmarkedFilterRaw == Manga.CHAPTER_SHOW_BOOKMARKED && !it.bookmark) ||
-                                (manga.bookmarkedFilterRaw == Manga.CHAPTER_SHOW_NOT_BOOKMARKED && it.bookmark)
+                                (manga.bookmarkedFilterRaw == Manga.CHAPTER_SHOW_BOOKMARKED && !it.bookmark) || (manga.bookmarkedFilterRaw == Manga.CHAPTER_SHOW_NOT_BOOKMARKED && it.bookmark)
                         }
+
                         else -> false
                     }
                 }
@@ -240,27 +235,22 @@ class ReaderViewModel @JvmOverloads constructor(
                     filteredChapters + listOf(selectedChapter)
                 }
             }
+
             else -> chapters
         }
-
-        chaptersForReader
-            .sortedWith(getChapterSort(manga, sortDescending = false))
-            .run {
+        chaptersForReader.sortedWith(getChapterSort(manga, sortDescending = false)).run {
                 if (readerPreferences.skipDupe().get()) {
                     removeDuplicates(selectedChapter)
                 } else {
                     this
                 }
-            }
-            .run {
+            }.run {
                 if (basePreferences.downloadedOnly().get()) {
                     filterDownloaded(manga, mangaMap)
                 } else {
                     this
                 }
-            }
-            .map { it.toDbChapter() }
-            .map(::ReaderChapter)
+            }.map { it.toDbChapter() }.map(::ReaderChapter)
     }
 
     private val incognitoMode = preferences.incognitoMode().get()
@@ -268,9 +258,7 @@ class ReaderViewModel @JvmOverloads constructor(
 
     init {
         // To save state
-        state.map { it.viewerChapters?.currChapter }
-            .distinctUntilChanged()
-            .filterNotNull()
+        state.map { it.viewerChapters?.currChapter }.distinctUntilChanged().filterNotNull()
             // SY -->
             .drop(1) // allow the loader to set the first page and chapter id
             // SY <-
@@ -282,14 +270,10 @@ class ReaderViewModel @JvmOverloads constructor(
                     currentChapter.requestedPage = currentChapter.chapter.last_page_read
                 }
                 chapterId = currentChapter.chapter.id!!
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
 
         // SY -->
-        state.mapLatest { it.ehAutoscrollFreq }
-            .distinctUntilChanged()
-            .drop(1)
-            .onEach { text ->
+        state.mapLatest { it.ehAutoscrollFreq }.distinctUntilChanged().drop(1).onEach { text ->
                 val parsed = text.toDoubleOrNull()
 
                 if (parsed == null || parsed <= 0 || parsed > 9999) {
@@ -299,8 +283,7 @@ class ReaderViewModel @JvmOverloads constructor(
                     readerPreferences.autoscrollInterval().set(parsed.toFloat())
                     mutableState.update { it.copy(isAutoScrollEnabled = true) }
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
         // SY <--
     }
 
@@ -536,7 +519,7 @@ class ReaderViewModel @JvmOverloads constructor(
             val isDownloaded = downloadManager.isChapterDownloaded(
                 dbChapter.name,
                 dbChapter.scanlator,
-                /* SY --> */ manga.ogTitle /* SY <-- */,
+                /* SY --> */ manga.ogTitle, /* SY <-- */
                 manga.source,
                 skipCache = true,
             )
@@ -675,7 +658,7 @@ class ReaderViewModel @JvmOverloads constructor(
      */
     private suspend fun updateChapterProgress(
         readerChapter: ReaderChapter,
-        page: Page/* SY --> */,
+        page: Page,/* SY --> */
         hasExtraPage: Boolean, /* SY <-- */
     ) {
         val pageIndex = page.index
@@ -692,33 +675,25 @@ class ReaderViewModel @JvmOverloads constructor(
             readerChapter.chapter.last_page_read = pageIndex
 
             // SY -->
-            if (
-                readerChapter.pages?.lastIndex == pageIndex ||
-                (hasExtraPage && readerChapter.pages?.lastIndex?.minus(1) == page.index)
-            ) {
+            if (readerChapter.pages?.lastIndex == pageIndex || (hasExtraPage && readerChapter.pages?.lastIndex?.minus(1) == page.index)) {
                 // SY <--
                 readerChapter.chapter.read = true
                 // SY -->
                 if (readerChapter.chapter.chapter_number > 0 && readerPreferences.markReadDupe().get()) {
-                    getChaptersByMangaId.await(manga!!.id).sortedByDescending { it.sourceOrder }
-                        .filter { 
-                            it.id != readerChapter.chapter.id &&
-                                !it.read &&
-                                it.chapterNumber.toFloat() == readerChapter.chapter.chapter_number
-                        }
-                        .ifEmpty { null }
-                        ?.also { setReadStatus.await(true, *it.toTypedArray()) }
+                    getChaptersByMangaId.await(manga!!.id).sortedByDescending { it.sourceOrder }.filter {
+                            it.id != readerChapter.chapter.id && !it.read && it.chapterNumber.toFloat() == readerChapter.chapter.chapter_number
+                        }.ifEmpty { null }?.also { setReadStatus.await(true, *it.toTypedArray()) }
                 }
                 if (manga?.isEhBasedManga() == true) {
                     viewModelScope.launchNonCancellable {
-                        val chapterUpdates = chapterList
-                            .filter { it.chapter.source_order > readerChapter.chapter.source_order }
-                            .map { chapter ->
-                                ChapterUpdate(
-                                    id = chapter.chapter.id!!,
-                                    read = true,
-                                )
-                            }
+                        val chapterUpdates =
+                            chapterList.filter { it.chapter.source_order > readerChapter.chapter.source_order }
+                                .map { chapter ->
+                                    ChapterUpdate(
+                                        id = chapter.chapter.id!!,
+                                        read = true,
+                                    )
+                                }
                         updateChapter.awaitAll(chapterUpdates)
                     }
                 }
@@ -859,9 +834,9 @@ class ReaderViewModel @JvmOverloads constructor(
         // SY -->
         return when {
             resolveDefault && readingMode == ReadingMode.DEFAULT && readerPreferences.useAutoWebtoon().get() -> {
-                manga.defaultReaderType(manga.mangaType(sourceName = sourceManager.get(manga.source)?.name))
-                    ?: default
+                manga.defaultReaderType(manga.mangaType(sourceName = sourceManager.get(manga.source)?.name)) ?: default
             }
+
             resolveDefault && readingMode == ReadingMode.DEFAULT -> default
             else -> manga.readingMode.toInt()
         }
@@ -1253,9 +1228,7 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     enum class SetAsCoverResult {
-        Success,
-        AddToLibraryFirst,
-        Error,
+        Success, AddToLibraryFirst, Error,
     }
 
     sealed interface SaveImageResult {
@@ -1359,7 +1332,7 @@ class ReaderViewModel @JvmOverloads constructor(
         // SY <--
 
         data class PageActions(
-            val page: ReaderPage/* SY --> */,
+            val page: ReaderPage,/* SY --> */
             val extraPage: ReaderPage? = null, /* SY <-- */
         ) : Dialog
 
@@ -1379,7 +1352,7 @@ class ReaderViewModel @JvmOverloads constructor(
         data class SavedImage(val result: SaveImageResult) : Event
         data class ShareImage(
             val uri: Uri,
-            val page: ReaderPage/* SY --> */,
+            val page: ReaderPage,/* SY --> */
             val secondPage: ReaderPage? = null, /* SY <-- */
         ) : Event
     }

@@ -30,14 +30,13 @@ import kotlin.jvm.internal.Intrinsics
 
 class ChatGPTLanguageTranslator(scanLanguage: ScanLanguage, private var apiKey: String) : LanguageTranslator {
     //TODO IMRPOVE THIS ONE ONCE I GOT A API KEY
-    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>> {
+    override suspend fun translate(pages: HashMap<String, List<TextTranslation>>){
         try {
-            val result = pages.mapValues { (k,v)->v.map {  b->TextTranslation(b,translateText(b.text.replace("\n", " "))) }}
-            return result
+            pages.forEach { (k,v)->v.forEach {  b->b.translated=translateText(b.text) }}
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return HashMap()
+
     }
     private suspend fun translateText(text: String): String {
         try {

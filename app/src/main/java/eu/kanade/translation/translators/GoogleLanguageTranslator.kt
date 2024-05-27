@@ -20,14 +20,14 @@ import kotlin.jvm.internal.Intrinsics
 class GoogleLanguageTranslator(scanLanguage: ScanLanguage) : LanguageTranslator {
     private val client1 = "gtx"
     private val client2 = "webapp"
-    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>> {
+    override suspend fun translate(pages: HashMap<String, List<TextTranslation>>) {
         try {
-            val result = pages.mapValues { (k,v)->v.map {  b->TextTranslation(b,translateText("en",b.text.replace("\n", " "))) }}
-            return result
+            pages.forEach { (k,v)->v.forEach { b->b.translated=translateText("en",b.text) }}
+
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return HashMap()
+
     }
     private fun rshift(j: Long, j2: Long): Long {
         var j = j

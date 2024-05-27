@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.util.fastAny
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.google.mlkit.vision.common.InputImage
+import com.hippo.unifile.UniFile
 import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
@@ -29,9 +31,12 @@ import eu.kanade.domain.track.model.toDomainTrack
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
+import eu.kanade.presentation.manga.components.ChapterTranslationAction
+import eu.kanade.presentation.manga.components.TranslationState
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
@@ -47,6 +52,7 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.util.chapter.getNextUnread
 import eu.kanade.tachiyomi.util.removeCovers
 import eu.kanade.tachiyomi.util.shouldDownloadNewChapters
+import eu.kanade.translation.ComicTranslator
 import exh.debug.DebugToggles
 import exh.eh.EHentaiUpdateHelper
 import exh.log.xLogD
@@ -84,6 +90,7 @@ import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.preference.mapAsCheckboxState
+import tachiyomi.core.common.storage.extension
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.lang.withIOContext
@@ -147,6 +154,7 @@ class MangaScreenModel(
     uiPreferences: UiPreferences = Injekt.get(),
     private val trackerManager: TrackerManager = Injekt.get(),
     private val downloadManager: DownloadManager = Injekt.get(),
+    private val comicTranslator: ComicTranslator = Injekt.get(),
     private val downloadCache: DownloadCache = Injekt.get(),
     private val getMangaAndChapters: GetMangaWithChapters = Injekt.get(),
     // SY -->
@@ -157,6 +165,7 @@ class MangaScreenModel(
     private val getMergedReferencesById: GetMergedReferencesById = Injekt.get(),
     private val insertMergedReference: InsertMergedReference = Injekt.get(),
     private val updateMergedSettings: UpdateMergedSettings = Injekt.get(),
+    private val downloadProvider: DownloadProvider = Injekt.get(),
     private val networkToLocalManga: NetworkToLocalManga = Injekt.get(),
     private val deleteMangaById: DeleteMangaById = Injekt.get(),
     private val deleteByMergeId: DeleteByMergeId = Injekt.get(),
@@ -183,7 +192,7 @@ class MangaScreenModel(
     private val mangaRepository: MangaRepository = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
-    val translationEnabled  get() =downloadPreferences.translateOnDownload().get()
+    val translationEnabled get() = downloadPreferences.translateOnDownload().get()
     private val successState: State.Success?
         get() = state.value as? State.Success
 
@@ -209,7 +218,8 @@ class MangaScreenModel(
 
     private val skipFiltered by readerPreferences.skipFiltered().asState(screenModelScope)
 
-    val isUpdateIntervalEnabled = LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD in libraryPreferences.autoUpdateMangaRestrictions().get()
+    val isUpdateIntervalEnabled =
+        LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD in libraryPreferences.autoUpdateMangaRestrictions().get()
 
     private val selectedPositions: Array<Int> = arrayOf(-1, -1) // first and last selected index in list
     private val selectedChapterIds: HashSet<Long> = HashSet()
@@ -268,7 +278,10 @@ class MangaScreenModel(
                         // Find chapters sharing same root
                         launchIO {
                             try {
-                                val (acceptedChain) = updateHelper.findAcceptedRootAndDiscardOthers(manga.source, chapters)
+                                val (acceptedChain) = updateHelper.findAcceptedRootAndDiscardOthers(
+                                    manga.source,
+                                    chapters,
+                                )
                                 // Redirect if we are not the accepted root
                                 if (manga.id != acceptedChain.manga.id && acceptedChain.manga.favorite) {
                                     // Update if any of our chapters are not in accepted manga's chapters
@@ -351,7 +364,7 @@ class MangaScreenModel(
                             } else {
                                 flowOf(emptySet())
                             }
-                        }
+                        },
                 ) { mangaScanlators, mergeScanlators ->
                     mangaScanlators + mergeScanlators
                 } // SY <--
@@ -367,7 +380,10 @@ class MangaScreenModel(
         screenModelScope.launchIO {
             val manga = getMangaAndChapters.awaitManga(mangaId)
             // SY -->
-            val chapters = (if (manga.source == MERGED_SOURCE_ID) getMergedChaptersByMangaId.await(mangaId, applyScanlatorFilter = true) else getMangaAndChapters.awaitChapters(mangaId, applyScanlatorFilter = true))
+            val chapters = (if (manga.source == MERGED_SOURCE_ID) getMergedChaptersByMangaId.await(
+                mangaId,
+                applyScanlatorFilter = true,
+            ) else getMangaAndChapters.awaitChapters(mangaId, applyScanlatorFilter = true))
                 .toChapterListItems(manga, null)
             val mergedData = getMergedReferencesById.await(mangaId).takeIf { it.isNotEmpty() }?.let { references ->
                 MergedMangaData(
@@ -417,7 +433,8 @@ class MangaScreenModel(
                     } else {
                         PagePreviewState.Unused
                     },
-                    alwaysShowReadingProgress = readerPreferences.preserveReadingPosition().get() && manga.isEhBasedManga(),
+                    alwaysShowReadingProgress = readerPreferences.preserveReadingPosition()
+                        .get() && manga.isEhBasedManga(),
                     previewsRowCount = uiPreferences.previewsRowCount().get(),
                     // SY <--
                 )
@@ -959,6 +976,20 @@ class MangaScreenModel(
         }
     }
 
+    private fun updateTranslationState(translationState: TranslationState, chapterID: Long) {
+        updateSuccessState { successState ->
+            val modifiedIndex = successState.chapters.indexOfFirst { it.id == chapterID }
+            if (modifiedIndex < 0) return@updateSuccessState successState
+
+            val newChapters = successState.chapters.toMutableList().apply {
+                val item = removeAt(modifiedIndex)
+                    .copy(translationState = translationState)
+                add(modifiedIndex, item)
+            }
+            successState.copy(chapters = newChapters)
+        }
+    }
+
     private fun List<Chapter>.toChapterListItems(
         manga: Manga,
         mergedData: MergedMangaData?,
@@ -998,6 +1029,25 @@ class MangaScreenModel(
                 else -> Download.State.NOT_DOWNLOADED
             }
 
+            var translated = false
+            var activeTranslating = false
+            if (downloadState == Download.State.DOWNLOADED) {
+                val dir = downloadProvider.findChapterDir(
+                    chapter.name,
+                    chapter.scanlator,
+                    manga.ogTitle,
+                    sourceManager.getOrStub(manga.source),
+                )
+                translated = dir?.listFiles()?.any { it.extension == "bkp" } ?: false
+                activeTranslating = dir?.name?.let { it1 -> comicTranslator.isInQueue(it1) } ?: false
+
+            }
+
+            val translationState = when {
+                activeTranslating -> TranslationState.TRANSLATING
+                translated -> TranslationState.TRANSLATED
+                else -> TranslationState.NOT_TRANSLATED
+            }
             ChapterList.Item(
                 chapter = chapter,
                 downloadState = downloadState,
@@ -1007,6 +1057,7 @@ class MangaScreenModel(
                 sourceName = source?.getNameForMangaInfo(null, enabledLanguages = enabledLanguages),
                 showScanlator = !isExhManga,
                 // SY <--
+                translationState = translationState,
             )
         }
     }
@@ -1018,9 +1069,11 @@ class MangaScreenModel(
                 is GetPagePreviews.Result.Error -> updateSuccessState {
                     it.copy(pagePreviewsState = PagePreviewState.Error(result.error))
                 }
+
                 is GetPagePreviews.Result.Success -> updateSuccessState {
                     it.copy(pagePreviewsState = PagePreviewState.Success(result.pagePreviews))
                 }
+
                 GetPagePreviews.Result.Unused -> updateSuccessState {
                     it.copy(pagePreviewsState = PagePreviewState.Unused)
                 }
@@ -1090,17 +1143,21 @@ class MangaScreenModel(
             LibraryPreferences.ChapterSwipeAction.ToggleRead -> {
                 markChaptersRead(listOf(chapter), !chapter.read)
             }
+
             LibraryPreferences.ChapterSwipeAction.ToggleBookmark -> {
                 bookmarkChapters(listOf(chapter), !chapter.bookmark)
             }
+
             LibraryPreferences.ChapterSwipeAction.Download -> {
                 val downloadAction: ChapterDownloadAction = when (chapterItem.downloadState) {
                     Download.State.ERROR,
                     Download.State.NOT_DOWNLOADED,
                     -> ChapterDownloadAction.START_NOW
+
                     Download.State.QUEUE,
                     Download.State.DOWNLOADING,
                     -> ChapterDownloadAction.CANCEL
+
                     Download.State.DOWNLOADED -> ChapterDownloadAction.DELETE
                 }
                 runChapterDownloadActions(
@@ -1108,6 +1165,7 @@ class MangaScreenModel(
                     action = downloadAction,
                 )
             }
+
             LibraryPreferences.ChapterSwipeAction.Disabled -> throw IllegalStateException()
         }
     }
@@ -1179,16 +1237,97 @@ class MangaScreenModel(
                     downloadManager.startDownloads()
                 }
             }
+
             ChapterDownloadAction.START_NOW -> {
                 val chapter = items.singleOrNull()?.chapter ?: return
                 startDownload(listOf(chapter), true)
             }
+
             ChapterDownloadAction.CANCEL -> {
                 val chapterId = items.singleOrNull()?.id ?: return
                 cancelDownload(chapterId)
             }
+
             ChapterDownloadAction.DELETE -> {
                 deleteChapters(items.map { it.chapter })
+            }
+        }
+    }
+
+    suspend fun runChapterTranslateActions(
+        item: ChapterList.Item,
+        action: ChapterTranslationAction, manga: Manga, source: Source,
+    ) {
+        when (action) {
+            ChapterTranslationAction.START -> {
+                try {
+                    updateTranslationState(TranslationState.TRANSLATING, item.chapter.id)
+                    var dir =
+                        downloadProvider.findChapterDir(
+                            item.chapter.name,
+                            item.chapter.scanlator,
+                            manga.ogTitle,
+                            source,
+                        )
+                            ?: return
+                    val files = dir.listFiles()!!
+                    if (files.any { it.extension == "bkp" }) {
+                        //Delete old translated
+                        files.filter { it.extension == "jpg" }.forEach { it.delete() }
+                        files.filter { it.extension == "bkp" }.forEach {
+                            val image = InputImage.fromFilePath(context, it.uri);
+                            comicTranslator.queuePage(dir.name!!, image, it.name!!.dropLast(4))
+                        }
+                    } else {
+                        files.filter { it.extension == "jpg" || it.extension == "png" || it.extension == "webp" || it.extension == "jpeg" }
+                            .forEach {
+                                val image = InputImage.fromFilePath(context, it.uri);
+                                comicTranslator.queuePage(dir.name!!, image, it.name!!)
+                            }
+                    }
+                    comicTranslator.processChapter(dir.name!!, dir)
+                    updateTranslationState(TranslationState.TRANSLATED, item.chapter.id)
+                    //get all bkp files
+                    //queue the files
+                    //process the files
+                } catch (_: Exception) {
+                    updateTranslationState(TranslationState.ERROR, item.chapter.id)
+                }
+            }
+
+            ChapterTranslationAction.CANCEL -> {
+                try {
+                    var dir =
+                        downloadProvider.findChapterDir(
+                            item.chapter.name,
+                            item.chapter.scanlator,
+                            manga.ogTitle,
+                            source,
+                        )
+                    if (dir != null) dir.name?.let { comicTranslator.removeQueue(it) }
+                    updateTranslationState(TranslationState.NOT_TRANSLATED, item.chapter.id)
+                } catch (_: Exception) {
+
+                }
+
+            }
+
+            ChapterTranslationAction.DELETE -> {
+                try {
+                    var dir =
+                        downloadProvider.findChapterDir(
+                            item.chapter.name,
+                            item.chapter.scanlator,
+                            manga.ogTitle,
+                            source,
+                        )
+                            ?: return;
+                    val files = dir.listFiles()!!
+                    files.filter { it.extension == "jpg" }.forEach { it.delete() }
+                    files.filter { it.extension == "bkp" }.forEach { it.renameTo(it.name!!.dropLast(4)) }
+                    updateTranslationState(TranslationState.NOT_TRANSLATED, item.chapter.id)
+                } catch (_: Exception) {
+                }
             }
         }
     }
@@ -1293,7 +1432,11 @@ class MangaScreenModel(
         screenModelScope.launchNonCancellable {
             val manga = successState?.manga ?: return@launchNonCancellable
             val categories = getCategories.await(manga.id).map { it.id }
-            if (chapters.isEmpty() || !manga.shouldDownloadNewChapters(categories, downloadPreferences) || manga.isEhBasedManga()) return@launchNonCancellable
+            if (chapters.isEmpty() || !manga.shouldDownloadNewChapters(
+                    categories,
+                    downloadPreferences,
+                ) || manga.isEhBasedManga()
+            ) return@launchNonCancellable
             downloadChapters(chapters)
         }
     }
@@ -1510,9 +1653,11 @@ class MangaScreenModel(
                             mdTrack == null -> {
                                 trackItems
                             }
+
                             mdTrack.track == null -> {
                                 trackItems - mdTrack + createMdListTrack()
                             }
+
                             else -> trackItems
                         }
                     } else {
@@ -1536,7 +1681,10 @@ class MangaScreenModel(
         val track = trackerManager.mdList.createInitialTracker(state.manga, mdManga)
             .toDomainTrack(false)!!
         insertTrack.await(track)
-        return TrackItem(getTracks.await(mangaId).first { it.trackerId == trackerManager.mdList.id }, trackerManager.mdList)
+        return TrackItem(
+            getTracks.await(mangaId).first { it.trackerId == trackerManager.mdList.id },
+            trackerManager.mdList,
+        )
     }
     // SY <--
 
@@ -1547,8 +1695,10 @@ class MangaScreenModel(
             val manga: Manga,
             val initialSelection: ImmutableList<CheckboxState<Category>>,
         ) : Dialog
+
         data class DeleteChapters(val chapters: List<Chapter>) : Dialog
         data class DuplicateManga(val manga: Manga, val duplicate: Manga) : Dialog
+
         /* SY -->
         data class Migrate(val newManga: Manga, val oldManga: Manga) : Dialog
         SY <-- */
@@ -1731,6 +1881,7 @@ sealed class ChapterList {
     data class Item(
         val chapter: Chapter,
         val downloadState: Download.State,
+        val translationState: TranslationState,
         val downloadProgress: Int,
         val selected: Boolean = false,
         // SY -->

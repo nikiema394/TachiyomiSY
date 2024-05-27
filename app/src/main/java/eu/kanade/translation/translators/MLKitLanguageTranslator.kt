@@ -19,14 +19,14 @@ class MLKitLanguageTranslator(scanLanguage: ScanLanguage) : LanguageTranslator {
             .build(),
     )
     private var conditions = DownloadConditions.Builder().build()
-    override suspend fun translate(pages: HashMap<String, List<TextBlock>>): Map<String, List<TextTranslation>> {
+    override suspend fun translate(pages: HashMap<String, List<TextTranslation>>) {
         try {
             translator.downloadModelIfNeeded(conditions).await()
-            val result = pages.mapValues { (k,v)->v.map {  b->TextTranslation(b,translator.translate(b.text.replace("\n"," ")).await()) }}
-            return result
+            pages.mapValues { (k,v)->v.map {  b->b.translated=translator.translate(b.text).await() }}
+
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }
         }
-        return HashMap()
+
     }
 }

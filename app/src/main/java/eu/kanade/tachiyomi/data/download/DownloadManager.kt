@@ -6,6 +6,9 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.util.storage.DiskUtil
+import eu.kanade.translation.ComicTranslator
+import eu.kanade.translation.LanguageTranslators
+import eu.kanade.translation.ScanLanguage
 import exh.log.xLogE
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -43,7 +46,6 @@ class DownloadManager(
     private val sourceManager: SourceManager = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
 ) {
-
     /**
      * Downloader whose only task is to download chapters.
      */

@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.AdaptiveSheet
 import eu.kanade.presentation.manga.components.MangaChapterListItem
+import eu.kanade.presentation.manga.components.TranslationState
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.reader.chapter.ReaderChapterItem
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsScreenModel
@@ -77,12 +78,14 @@ fun ChapterListDialog(
                     selected = false,
                     downloadIndicatorEnabled = false,
                     downloadStateProvider = { Download.State.NOT_DOWNLOADED },
+                    translationStateProvider = { TranslationState.NOT_TRANSLATED },
                     downloadProgressProvider = { 0 },
                     chapterSwipeStartAction = LibraryPreferences.ChapterSwipeAction.ToggleBookmark,
                     chapterSwipeEndAction = LibraryPreferences.ChapterSwipeAction.ToggleBookmark,
                     onLongClick = { /*TODO*/ },
                     onClick = { onClickChapter(chapterItem.chapter) },
                     onDownloadClick = null,
+                    onTranslateClick = null,
                     onChapterSwipe = {
                         onBookmark(chapterItem.chapter)
                     }, 
