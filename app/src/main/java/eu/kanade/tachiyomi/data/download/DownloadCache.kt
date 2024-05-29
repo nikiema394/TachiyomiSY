@@ -413,7 +413,7 @@ class DownloadCache(
         // SY <--
     }
 
-    private fun notifyChanges() {
+    fun notifyChanges() {
         scope.launchNonCancellable {
             _changes.send(Unit)
         }

@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.tachiyomi.R
+import eu.kanade.translation.Translation
 import tachiyomi.core.common.util.lang.launchNow
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.IconButtonTokens
@@ -46,31 +47,36 @@ enum class ChapterTranslationAction {
 @Composable
 fun ChapterTranslationIndicator(
     enabled: Boolean,
-    translationStateProvider: () -> TranslationState,
+    translationStateProvider: () -> Translation.State,
     onClick: (ChapterTranslationAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
 
     when (val state = translationStateProvider()) {
 
-        TranslationState.NOT_TRANSLATED -> NotTranslatedIndicator(
+        Translation.State.NOT_TRANSLATED -> NotTranslatedIndicator(
             enabled = enabled,
             modifier = modifier,
             onClick = onClick,
         )
 
-        TranslationState.TRANSLATING -> TranslatingIndicator(
+        Translation.State.TRANSLATING -> TranslatingIndicator(
             enabled = enabled,
             modifier = modifier,
             onClick = onClick,
         )
+        Translation.State.QUEUE -> TranslatingIndicator(
+            enabled = enabled,
+        modifier = modifier,
+        onClick = onClick,
+            )
 
-        TranslationState.TRANSLATED -> TranslatedIndicator(
+        Translation.State.TRANSLATED -> TranslatedIndicator(
             enabled = enabled,
             modifier = modifier,
             onClick = onClick,
         )
-        TranslationState.ERROR-> ErrorIndicator(
+        Translation.State.ERROR-> ErrorIndicator(
         enabled = enabled,
         modifier = modifier,
         onClick = onClick,

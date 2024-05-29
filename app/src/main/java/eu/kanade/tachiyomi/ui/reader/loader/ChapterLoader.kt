@@ -9,9 +9,11 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import eu.kanade.translation.TranslationManager
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.MergedMangaReference
 import tachiyomi.domain.source.model.StubSource
@@ -29,10 +31,12 @@ class ChapterLoader(
     private val downloadProvider: DownloadProvider,
     private val manga: Manga,
     private val source: Source,
+    private val translationManager: TranslationManager,
     // SY -->
     private val sourceManager: SourceManager,
     private val readerPrefs: ReaderPreferences,
     private val mergedReferences: List<MergedMangaReference>,
+    private val downloadPreferences:DownloadPreferences,
     private val mergedManga: Map<Long, Manga>,
     // SY <--
 ) {
@@ -118,7 +122,7 @@ class ChapterLoader(
                         manga = manga,
                         source = source,
                         downloadManager = downloadManager,
-                        downloadProvider = downloadProvider,
+                        downloadProvider = downloadProvider,translationManager=translationManager
                     )
                     source is HttpSource -> HttpPageLoader(chapter, source)
                     source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
@@ -137,7 +141,7 @@ class ChapterLoader(
                 }
             }
             // SY <--
-            isDownloaded -> DownloadPageLoader(chapter, manga, source, downloadManager, downloadProvider)
+            isDownloaded -> DownloadPageLoader(chapter, manga, source, downloadManager, downloadProvider,translationManager=translationManager)
             source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
                 when (format) {
                     is Format.Directory -> DirectoryPageLoader(format.file)

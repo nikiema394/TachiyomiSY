@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.translation.Translation
 import me.saket.swipe.SwipeableActionsBox
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
@@ -45,12 +46,7 @@ import tachiyomi.presentation.core.components.material.ReadItemAlpha
 import tachiyomi.presentation.core.components.material.SecondaryItemAlpha
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.selectedBackground
-enum class TranslationState(val value: Int) {
-    NOT_TRANSLATED(0),
-    TRANSLATING(1),
-    TRANSLATED(2),
-    ERROR(3),
-}
+
 @Composable
 fun MangaChapterListItem(
     title: String,
@@ -65,7 +61,7 @@ fun MangaChapterListItem(
     selected: Boolean,
     downloadIndicatorEnabled: Boolean,
     downloadStateProvider: () -> Download.State,
-    translationStateProvider: () -> TranslationState,
+    translationStateProvider: () -> Translation.State,
     downloadProgressProvider: () -> Int,
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
@@ -74,7 +70,7 @@ fun MangaChapterListItem(
     onDownloadClick: ((ChapterDownloadAction) -> Unit)?,
     onTranslateClick: ((ChapterTranslationAction) -> Unit)?,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
-    modifier: Modifier = Modifier,translationEnabled: Boolean =false
+    modifier: Modifier = Modifier, translationEnabled: Boolean =false
 ) {
     val textAlpha = if (read) ReadItemAlpha else 1f
     val textSubtitleAlpha = if (read) ReadItemAlpha else SecondaryItemAlpha

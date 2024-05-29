@@ -292,7 +292,6 @@ dependencies {
     implementation("com.google.mlkit:translate:17.0.2")
     implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
 
-
 }
 
 androidComponents {

@@ -24,7 +24,7 @@ import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.AndroidSourceManager
 import eu.kanade.tachiyomi.util.storage.CbzCrypto
-import eu.kanade.translation.ComicTranslator
+import eu.kanade.translation.TranslationManager
 import exh.eh.EHentaiUpdateHelper
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import kotlinx.serialization.json.Json
@@ -152,7 +152,7 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
         addSingletonFactory { ExtensionManager(app) }
-        addSingletonFactory { ComicTranslator(app) }
+
         addSingletonFactory { DownloadProvider(app) }
         addSingletonFactory { DownloadManager(app) }
         addSingletonFactory { DownloadCache(app) }
@@ -166,7 +166,7 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory { LocalSourceFileSystem(get()) }
         addSingletonFactory { LocalCoverManager(app, get()) }
         addSingletonFactory { StorageManager(app, get()) }
-
+        addSingletonFactory { TranslationManager(app) }
         // SY -->
         addSingletonFactory { EHentaiUpdateHelper(app) }
 

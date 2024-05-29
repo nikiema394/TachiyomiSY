@@ -1,34 +1,20 @@
 package eu.kanade.translation.translators
 
 
-import TextTranslation
-import com.google.mlkit.common.model.DownloadConditions
-import com.google.mlkit.nl.translate.TranslateLanguage
-import com.google.mlkit.nl.translate.Translation
-import com.google.mlkit.nl.translate.TranslatorOptions
-import com.google.mlkit.vision.text.Text.TextBlock
+import eu.kanade.translation.TextTranslation
 import eu.kanade.tachiyomi.network.await
-import eu.kanade.translation.ScanLanguage
-import kotlinx.coroutines.tasks.await
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.addJsonArray
 import kotlinx.serialization.json.addJsonObject
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
 import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
-import kotlin.jvm.internal.Intrinsics
 
-class ChatGPTLanguageTranslator(scanLanguage: ScanLanguage, private var apiKey: String) : LanguageTranslator {
+class ChatGPTTranslator(scanLanguage: ScanLanguage, private var apiKey: String) : TextTranslator {
     //TODO IMRPOVE THIS ONE ONCE I GOT A API KEY
     override suspend fun translate(pages: HashMap<String, List<TextTranslation>>){
         try {

@@ -1,10 +1,6 @@
 package eu.kanade.tachiyomi.data.download
 
 import android.content.Context
-import android.graphics.BitmapFactory
-import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.lifecycleScope
-import com.google.mlkit.vision.common.InputImage
 import com.hippo.unifile.UniFile
 import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.domain.manga.model.getComicInfo
@@ -20,10 +16,6 @@ import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import eu.kanade.tachiyomi.util.storage.DiskUtil.NOMEDIA_FILE
 import eu.kanade.tachiyomi.util.storage.saveTo
-import eu.kanade.translation.ComicTranslator
-import eu.kanade.translation.LanguageTranslators
-import eu.kanade.translation.ScanLanguage
-import eu.kanade.translation.translators.LanguageTranslator
 import exh.source.isEhBasedSource
 import exh.util.DataSaver
 import exh.util.DataSaver.Companion.getImage
@@ -38,7 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,16 +38,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.forEach
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import logcat.LogPriority
-import logcat.logcat
 import nl.adaptivity.xmlutil.serialization.XML
 import okhttp3.Response
 import tachiyomi.core.common.i18n.stringResource
@@ -80,12 +67,10 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.BufferedOutputStream
 import java.io.File
-import java.io.IOException
 import java.util.Locale
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import kotlin.time.measureTime
 
 /**
  * This class is the one in charge of downloading chapters.
@@ -100,7 +85,6 @@ class Downloader(
     private val sourceManager: SourceManager = Injekt.get(),
     private val chapterCache: ChapterCache = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
-    private val comicTranslator: ComicTranslator= Injekt.get(),
     private val xml: XML = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getTracks: GetTracks = Injekt.get(),
@@ -108,9 +92,6 @@ class Downloader(
     private val sourcePreferences: SourcePreferences = Injekt.get(),
     // SY <--
 ) {
-
-
-    private var shouldTranslate = false
 
     /**
      * Store for persisting downloads across restarts.
@@ -147,22 +128,6 @@ class Downloader(
         launchNow {
             val chapters = async { store.restore() }
             addAllToQueue(chapters.await())
-            downloadPreferences.translateOnDownload().changes().onEach {
-                shouldTranslate = it
-            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
-
-            downloadPreferences.translateLanguage().changes().onEach {
-                comicTranslator.updateLanguage(ScanLanguage.entries[it])
-            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
-            downloadPreferences.translationApiKey().changes().onEach {
-                comicTranslator.updateAPIKey(it)
-            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
-            downloadPreferences.translationFont().changes().onEach {
-                comicTranslator.updateFont(context, it)
-            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
-            downloadPreferences.translationEngine().changes().onEach {
-                comicTranslator.updateEngine(LanguageTranslators.entries[it])
-            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
         }
     }
 
@@ -420,7 +385,8 @@ class Downloader(
                 return
             }
             //Translate and Render Images
-            if (downloadPreferences.translateOnDownload().get()) comicTranslator.processChapter(tmpDir.name!!, tmpDir)
+            //TODO ADD AUTO TRANSALTE
+//            if (downloadPreferences.translateOnDownload().get()) chapterTranslator.processChapter(tmpDir.name!!, tmpDir)
 
 
             createComicInfoFile(
@@ -527,15 +493,6 @@ class Downloader(
                 response.body.source().saveTo(file.openOutputStream())
                 val extension = getImageExtension(response, file)
                 file.renameTo("$filename.$extension")
-                if (shouldTranslate) {
-                    try {
-                        val image = InputImage.fromFilePath(context, file.uri)
-                        comicTranslator.queuePage(tmpDir.name!!, image, "$filename.$extension")
-                    } catch (e: IOException) {
-                        e.printStackTrace()
-                    }
-                }
-
             } catch (e: Exception) {
                 response.close()
                 file.delete()

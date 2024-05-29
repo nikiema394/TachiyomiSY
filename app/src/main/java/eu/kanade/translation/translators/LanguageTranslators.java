@@ -1,4 +1,4 @@
-package eu.kanade.translation;
+package eu.kanade.translation.translators;
 
 public enum LanguageTranslators {
 

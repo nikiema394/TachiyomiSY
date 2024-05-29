@@ -247,16 +247,7 @@ class MangaScreen(
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
-            onTranslateChapter = { item, action ->
-                GlobalScope.launch {
-                    screenModel.runChapterTranslateActions(
-                        item,
-                        action,
-                        successState.manga,
-                        successState.source,
-                    )
-                }
-            },
+            onTranslateChapter = screenModel::runChapterTranslateActions,
             translationEnabled = screenModel.translationEnabled,
         )
 

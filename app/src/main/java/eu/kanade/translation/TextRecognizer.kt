@@ -1,4 +1,4 @@
-package eu.kanade.translation.translators
+package eu.kanade.translation
 
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
@@ -8,7 +8,7 @@ import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import eu.kanade.translation.ScanLanguage
+import eu.kanade.translation.translators.ScanLanguage
 import kotlinx.coroutines.tasks.await
 
 class TextRecognizer(scanLanguage: ScanLanguage) {

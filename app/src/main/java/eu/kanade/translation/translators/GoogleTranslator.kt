@@ -1,14 +1,11 @@
 package eu.kanade.translation.translators
 
-import TextTranslation
+import eu.kanade.translation.TextTranslation
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.extractor.ts.PsExtractor
-import com.google.mlkit.vision.text.Text.TextBlock
 import eu.kanade.tachiyomi.network.await
-import eu.kanade.translation.ScanLanguage
-import kotlinx.coroutines.tasks.await
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -17,7 +14,7 @@ import java.io.UnsupportedEncodingException
 import java.net.URLEncoder
 import kotlin.jvm.internal.Intrinsics
 
-class GoogleLanguageTranslator(scanLanguage: ScanLanguage) : LanguageTranslator {
+class GoogleTranslator(scanLanguage: ScanLanguage) : TextTranslator {
     private val client1 = "gtx"
     private val client2 = "webapp"
     override suspend fun translate(pages: HashMap<String, List<TextTranslation>>) {

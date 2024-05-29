@@ -1,28 +1,39 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.webtoon
 
 import android.content.res.Resources
+import android.graphics.Rect
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
+import androidx.compose.ui.unit.Dp
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updateMargins
+import androidx.core.view.updateMarginsRelative
+import androidx.core.view.updatePadding
+import androidx.core.view.updatePaddingRelative
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import eu.kanade.tachiyomi.databinding.ReaderErrorBinding
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderPageImageView
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
 import eu.kanade.tachiyomi.util.system.dpToPx
+import eu.kanade.translation.TextTranslation
+import eu.kanade.translation.TextTranslationsComposeView
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import logcat.LogPriority
+import logcat.logcat
 import okio.Buffer
 import okio.BufferedSource
 import tachiyomi.core.common.util.lang.launchIO
@@ -30,6 +41,8 @@ import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
  * Holder of the webtoon reader for a single page of a chapter.
@@ -41,8 +54,11 @@ import tachiyomi.core.common.util.system.logcat
 class WebtoonPageHolder(
     private val frame: ReaderPageImageView,
     viewer: WebtoonViewer,
+    private val readerPreferences: ReaderPreferences = Injekt.get(),
 ) : WebtoonBaseHolder(frame, viewer) {
 
+    private var textTranslationsComposeView: TextTranslationsComposeView? = null
+    private var showTranslations=false
     /**
      * Loading progress bar to indicate the current progress.
      */
@@ -83,6 +99,16 @@ class WebtoonPageHolder(
         frame.onImageLoaded = { onImageDecoded() }
         frame.onImageLoadError = { setError() }
         frame.onScaleChanged = { viewer.activity.hideMenu() }
+        showTranslations=readerPreferences.showTranslations().get()
+        readerPreferences.showTranslations().changes().onEach {
+            showTranslations=it
+            if(it){
+                textTranslationsComposeView?.show()
+            }else{
+                textTranslationsComposeView?.hide()
+            }
+
+        }.launchIn(scope)
     }
 
     /**
@@ -124,6 +150,7 @@ class WebtoonPageHolder(
     /**
      * Loads the page and processes changes to the page's status.
      *
+     *
      * Returns immediately if there is no page or the page has no PageLoader.
      * Otherwise, this function does not return. It will continue to process status changes until
      * the Job is cancelled.
@@ -145,7 +172,12 @@ class WebtoonPageHolder(
                             progressIndicator.setProgress(value)
                         }
                     }
-                    Page.State.READY -> setImage()
+
+                    Page.State.READY -> {
+                        setImage()
+                        page.translations?.let { createTranslationTextDialog(it) }
+                    }
+
                     Page.State.ERROR -> setError()
                 }
             }
@@ -269,6 +301,21 @@ class WebtoonPageHolder(
         }
         progressContainer.addView(progress)
         return progress
+    }
+
+    /**
+     * Creates a new progress bar.
+     */
+    private fun createTranslationTextDialog(textTranslations: List<TextTranslation>) {
+        textTranslationsComposeView?.let { frame.removeView(textTranslationsComposeView) }
+        textTranslationsComposeView = TextTranslationsComposeView(itemView.context, translations = textTranslations)
+
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT,
+        )
+        if(!showTranslations) textTranslationsComposeView?.hide()
+        frame.addView(textTranslationsComposeView, layoutParams)
     }
 
     /**

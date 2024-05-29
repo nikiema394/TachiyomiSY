@@ -1,4 +1,4 @@
-package eu.kanade.translation;
+package eu.kanade.translation.translators;
 
 import com.google.mlkit.nl.translate.TranslateLanguage;
 

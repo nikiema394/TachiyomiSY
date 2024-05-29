@@ -6,7 +6,6 @@ import android.app.assist.AssistContent
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -92,7 +91,6 @@ import eu.kanade.tachiyomi.util.system.isNightMode
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.view.setComposeContent
-import eu.kanade.translation.translators.ScanTextDialog
 import exh.source.isEhBasedSource
 import exh.ui.ifSourcesLoaded
 import exh.util.defaultReaderType
@@ -852,7 +850,7 @@ class ReaderActivity : BaseActivity() {
         viewModel.onViewerLoaded(newViewer)
         updateViewerInset(readerPreferences.fullscreen().get())
         binding.viewerContainer.addView(newViewer.getView())
-//        binding.viewerContainer.addView(ScanTextDialog(this))
+
         // SY -->
         if (newViewer is PagerViewer) {
             if (readerPreferences.pageLayout().get() == PagerConfig.PageLayout.AUTOMATIC) {

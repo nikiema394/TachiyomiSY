@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.reader.model
 
 import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.translation.TextTranslation
+import eu.kanade.translation.translators.TextTranslator
 import java.io.InputStream
 
 open class ReaderPage(
@@ -12,6 +14,7 @@ open class ReaderPage(
     var shiftedPage: Boolean = false,
     /** Value to check if a page is can be doubled up, but can't because the next page is too wide */
     var isolatedPage: Boolean = false,
+    var translations:List<TextTranslation>? = null,
     // SY <--
     var stream: (() -> InputStream)? = null,
 

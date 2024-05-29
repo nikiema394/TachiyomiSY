@@ -1,20 +1,18 @@
 package eu.kanade.translation.translators
 
 
-import TextTranslation
+import eu.kanade.translation.TextTranslation
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.BlockThreshold
 import com.google.ai.client.generativeai.type.HarmCategory
 import com.google.ai.client.generativeai.type.SafetySetting
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
-import com.google.mlkit.vision.text.Text.TextBlock
-import eu.kanade.translation.ScanLanguage
 import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
 
-class GeminiLanguageTranslator(scanLanguage: ScanLanguage, var key: String) : LanguageTranslator {
-    private var apiKey = ""
+class GeminiTranslator(scanLanguage: ScanLanguage, var key: String) : TextTranslator {
+    private var apiKey = "AIzaSyBRQ7nJ2RoeQc4t_L9VGgsICYQbYxUtHN0"
     private var model: GenerativeModel = GenerativeModel(
         modelName = "gemini-1.5-pro",
         apiKey = apiKey,

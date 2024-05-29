@@ -1,10 +1,9 @@
 package eu.kanade.translation.translators
 
-import TextTranslation
-import com.google.mlkit.vision.text.Text.TextBlock
+import eu.kanade.translation.TextTranslation
 
 
-interface LanguageTranslator {
+interface TextTranslator {
 
     suspend fun translate(pages:   HashMap<String, List<TextTranslation>>)
 }
