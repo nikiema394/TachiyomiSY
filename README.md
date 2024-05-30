@@ -33,9 +33,10 @@ Newly Added :
 ## Download
 Get the app from our [releases page](https://github.com/mannu691/TachiyomiSY/releases/latest).
 
-**Currently "Save as CBZ Archive" option is not supported**
+**Currently Only "Long Strip" reader mode is working**
+**Also "Save as CBZ Archive" option is not supported**
 **please turn it off in Settings > Downloads > Save as CBZ Archive**
-## Issues, Feature Requests and Contributing
+## Issues, Feature _Requests_ and Contributing
 
 Please make sure to read the full guidelines. Your issue may be closed without warning if you do not.
 
