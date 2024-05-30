@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.data.download
 
 import android.content.Context
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.hippo.unifile.UniFile
 import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.domain.manga.model.getComicInfo
@@ -16,6 +18,7 @@ import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import eu.kanade.tachiyomi.util.storage.DiskUtil.NOMEDIA_FILE
 import eu.kanade.tachiyomi.util.storage.saveTo
+import eu.kanade.translation.TranslationManager
 import exh.source.isEhBasedSource
 import exh.util.DataSaver
 import exh.util.DataSaver.Companion.getImage
@@ -38,6 +41,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
@@ -88,6 +93,7 @@ class Downloader(
     private val xml: XML = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getTracks: GetTracks = Injekt.get(),
+    private val translationManager: TranslationManager= Injekt.get(),
     // SY -->
     private val sourcePreferences: SourcePreferences = Injekt.get(),
     // SY <--
@@ -97,7 +103,7 @@ class Downloader(
      * Store for persisting downloads across restarts.
      */
     private val store = DownloadStore(context)
-
+    private var translateOnDownload = false
     /**
      * Queue where active downloads are kept.
      */
@@ -128,6 +134,11 @@ class Downloader(
         launchNow {
             val chapters = async { store.restore() }
             addAllToQueue(chapters.await())
+            launchNow {
+                downloadPreferences.translateOnDownload().changes().onEach {
+                    translateOnDownload=it
+                }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+            }
         }
     }
 
@@ -385,9 +396,6 @@ class Downloader(
                 return
             }
             //Translate and Render Images
-            //TODO ADD AUTO TRANSALTE
-//            if (downloadPreferences.translateOnDownload().get()) chapterTranslator.processChapter(tmpDir.name!!, tmpDir)
-
 
             createComicInfoFile(
                 tmpDir,
@@ -407,6 +415,7 @@ class Downloader(
             DiskUtil.createNoMediaFile(tmpDir, context)
 
             download.status = Download.State.DOWNLOADED
+            if (translateOnDownload) translationManager.translateChapter(chapterID =download.chapter.id )
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             // If the page list threw, it will resume here

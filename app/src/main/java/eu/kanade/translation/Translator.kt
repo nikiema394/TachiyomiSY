@@ -24,6 +24,7 @@ import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.download.service.DownloadPreferences
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import kotlin.math.log
 
 class Translator(context: Context, private val downloadPreferences: DownloadPreferences = Injekt.get()) {
     private val chapterTranslator = ChapterTranslator(context)
@@ -38,10 +39,7 @@ class Translator(context: Context, private val downloadPreferences: DownloadPref
     init {
 
         launchNow {
-            downloadPreferences.translateOnDownload().changes().onEach {
-                //TODO ADD listener in download manage rto translate chap on dwnload
-//            shouldTranslate = it
-            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+
             downloadPreferences.translateLanguage().changes().onEach {
                 chapterTranslator.updateLanguage(ScanLanguage.entries[it])
             }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
@@ -92,6 +90,7 @@ class Translator(context: Context, private val downloadPreferences: DownloadPref
             translation.status = Translation.State.TRANSLATED
             logcat { "Translated chapter ${translation.chapter.id}" }
         } catch (e: Exception) {
+            logcat { e.stackTraceToString() }
             logcat { "Failed to translate chapter ${translation.chapter.id}" }
             translation.status = Translation.State.ERROR
             cancelCurrent()

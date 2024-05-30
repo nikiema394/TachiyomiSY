@@ -23,14 +23,8 @@ import logcat.logcat
 import tachiyomi.core.common.storage.extension
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 
-/**TODOS
- * Build a Translation Class for state of Job ✔
- * Build a Translation Job Manager ✔
- * Rework the Translation Process to output to translations.json  ✔
- * Read translations.json while loading chapter for reader
- * Build ScanDialogView to display text translations
- */
 class ChapterTranslator(
     private val context: Context,
     private var scanLanguage: ScanLanguage = ScanLanguage.CHINESE,
@@ -57,51 +51,14 @@ class ChapterTranslator(
                 val result = recognizer.recognize(image)
                 val blocks = result.textBlocks.filter { it.boundingBox != null && it.text.length > 1 }
                 val resultant = toTextTranslation(blocks, image.width, image.height)
-                file.name?.let { pages.put(it, resultant) }
+                if (resultant.isNotEmpty()) file.name?.let { pages.put(it, resultant) }
             } catch (e: Exception) {
             }
         }
 
         //Translate All Pages
         textTranslator.translate(pages)
-        pages.forEach { page -> tempTest(page.value) }
         Json.encodeToStream(pages, translation.dir.createFile("translations.json")!!.openOutputStream())
-    }
-
-    private fun tempTest(blocks: List<TextTranslation>){
-        val resultant = ArrayList<TextTranslation>()
-        val width = blocks.first().imgHeight
-        val height = blocks.first().imgHeight
-        for (block in blocks) {
-            try {
-                var passed = true;
-                val bounds = block.textBlock!!.boundingBox!!
-                logcat { "Text : ${block.translated}" }
-
-                for (i in resultant.lastIndex downTo (resultant.lastIndex - 5).coerceAtLeast(0)) {
-
-                    val b2 = resultant[i]
-                    val b2b = b2.textBlock!!.boundingBox!!
-
-                    if (b2b.bottom >= bounds.top && abs(b2b.left - bounds.left) < 20) {
-                        logcat { "${b2.translated} ||| bottom : ${b2b.bottom} | top2 : ${bounds.left} | ${abs(b2b.left - bounds.left)}" }
-                        logcat { "ADDED : ${block.translated}" }
-                        passed = false
-//                        b2.text += " " + block.text.replace("\n", " ")
-//                        b2.height = (b2b.height() + bounds.height()) / height.toFloat()
-//                        b2.width = max(bounds.width(), b2b.width()) / width.toFloat()
-                        break;
-                    }
-                }
-                if (passed) {
-                    resultant.add(
-                        block,
-                    )
-                }
-            } catch (e: Exception) {
-                logcat { "ERROR : ${e.stackTraceToString()}" }
-            }
-        }
     }
 
     private fun toTextTranslation(blocks: List<TextBlock>, width: Int, height: Int): ArrayList<TextTranslation> {
@@ -110,39 +67,50 @@ class ChapterTranslator(
             try {
                 var passed = true;
                 val bounds = block.boundingBox!!
-//                logcat { "Text : ${block.text}" }
+                val symbolBound = block.lines.first().elements.first().symbols.first().boundingBox!!
+                val bWidth = bounds.width().toFloat()
+                val bHeight = bounds.height().toFloat()
+                val bX = symbolBound.left.toFloat()
+                val bY = symbolBound.top.toFloat()
 
-//                for (i in resultant.lastIndex downTo (resultant.lastIndex - 5).coerceAtLeast(0)) {
-//
-//                    val b2 = resultant[i]
-//                    val b2b = b2.textBlock!!.boundingBox!!
-//                    logcat { "bottom : ${b2b.bottom} | top2 : ${bounds.left} | ${abs(b2b.left - bounds.left)}" }
-//                    if (b2b.bottom >= bounds.top && abs(b2b.left - bounds.left) < 20) {
-//
-//                        logcat { "ADDED : ${ block.text.replace("\n", " ")}" }
-//                        passed = false
-//                        b2.text += " " + block.text.replace("\n", " ")
-//                        b2.height=(b2b.height()+bounds.height())/height.toFloat()
-//                        b2.width= max(bounds.width(),b2b.width())/width.toFloat()
-//                        break;
-//                    }
-//                }
+//                logcat { "BLOCK : ${block.text} | ${bY} | ${bounds.bottom} | ${bX}" }
+
+                for (i in resultant.lastIndex downTo (resultant.lastIndex - 5).coerceAtLeast(0)) {
+                    val b2 = resultant[i]
+                    val bottom = b2.height + b2.y
+//                    logcat { "RES : ${b2.text} | ${bottom} | ${b2.x - bX} | ${(bY - bottom)}" }
+                    if (bY - bottom < 20 && abs(b2.x - bX) < 20) {
+//                        logcat { "ADDED : ${block.text.replace("\n", " ")}" }
+                        passed = false
+                        b2.text += " " + block.text.replace("\n", " ")
+                        b2.height += bHeight + 18
+                        b2.width = max(bWidth, b2.width)
+                        b2.x = min(bX, b2.x)
+                        break
+                    }
+                }
                 if (passed) {
-                    val symbolBound = block.lines.first().elements.first().symbols.first().boundingBox!!
                     resultant.add(
                         TextTranslation(
                             text = block.text.replace("\n", " "),
-                            x = (symbolBound.left / width.toFloat()),
-                            y = symbolBound.top / height.toFloat(),
-                            width = bounds.width() / width.toFloat(),
-                            height = bounds.height() / height.toFloat(),
+                            x = bX,
+                            y = bY,
+                            width = bounds.width().toFloat(),
+                            height = bounds.height().toFloat(),
                             angle = block.lines.first().angle,
-                            textBlock = block, imgHeight = height, imgWidth = width
                         ),
                     )
                 }
             } catch (e: Exception) {
                 logcat { "ERROR : ${e.stackTraceToString()}" }
+            }
+        }
+        resultant.forEach { tt ->
+            run {
+                tt.x /= width
+                tt.y /= height
+                tt.width /= width
+                tt.height /= height
             }
         }
 
@@ -180,3 +148,4 @@ class ChapterTranslator(
     }
 
 }
+

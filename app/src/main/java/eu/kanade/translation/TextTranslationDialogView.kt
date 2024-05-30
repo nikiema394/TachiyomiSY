@@ -83,22 +83,23 @@ class TextTranslationsComposeView :
                 .fillMaxSize()
                 .onSizeChanged {
                     size = it
+                    if(size==IntSize.Zero)hide()
+                    if(size==IntSize.Zero)show()
                 },
         ) {
             if (size == IntSize.Zero) return
             val imgWidth = size.width
             val imgHeight = size.height
             translations.forEach { translation ->
-                //TODO give paddding when translatingt the text
                 val xPx = ((translation.x-0.02) * imgWidth).toFloat()
                 val yPx =  ((translation.y-0.015) * imgHeight).toFloat()
                 val width = ((translation.width+0.04) * imgWidth).toFloat()
-                val height =((translation.height+0.03) * imgHeight).toFloat()
+                val height =((translation.height*1.2+0.03) * imgHeight).toFloat()
                 TextBlock(
                     translation = translation,
                     modifier = Modifier
                         .absoluteOffset(pxToDp(xPx), pxToDp(yPx))
-                        .rotate(translation.angle)
+                        .rotate(if(translation.angle<89)translation.angle else 0f)
                         .size(pxToDp(width), pxToDp(height)),
                 )
             }
@@ -110,12 +111,13 @@ class TextTranslationsComposeView :
         Box(modifier = modifier) {
             AutoSizeText(
                 text = translation.translated,
-                color = Color.Red,
+                color = Color.Black,
                 softWrap = true, fontFamily = font,
+                lineSpacingRatio = 1.2f,
                 overflow = TextOverflow.Clip,
                 alignment = Alignment.Center,
                 modifier = Modifier
-                    .background(Color.Blue.copy(alpha = 1f))
+                    .background(Color.White)
                     .padding(1.dp)
 
             )

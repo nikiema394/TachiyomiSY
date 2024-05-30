@@ -20,7 +20,9 @@ Newly Added :
 * Japanase
 
 ## Translation Comparison
-//TODO
+| ManhuaPlus  | Gemini | Google Translate  | MLKit (On Device) |
+| ------------- | ------------- | ------------- | ------------- |
+| ![ManhuaPlus](./.github/readme-images/manhuaplus.png)  | ![Gemini](./.github/readme-images/gemini.png)  | ![GoogleTranslate](./.github/readme-images/googletranslate.png)  | ![mlkit](./.github/readme-images/mlkit.png)  |
 
 ## Available Translators
 * MLkit : On Device Translations
@@ -31,6 +33,8 @@ Newly Added :
 ## Download
 Get the app from our [releases page](https://github.com/mannu691/TachiyomiSY/releases/latest).
 
+**Currently "Save as CBZ Archive" option is not supported**
+**please turn it off in Settings > Downloads > Save as CBZ Archive**
 ## Issues, Feature Requests and Contributing
 
 Please make sure to read the full guidelines. Your issue may be closed without warning if you do not.

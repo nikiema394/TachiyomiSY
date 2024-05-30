@@ -12,7 +12,7 @@ import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
 
 class GeminiTranslator(scanLanguage: ScanLanguage, var key: String) : TextTranslator {
-    private var apiKey = "AIzaSyBRQ7nJ2RoeQc4t_L9VGgsICYQbYxUtHN0"
+    private var apiKey = key
     private var model: GenerativeModel = GenerativeModel(
         modelName = "gemini-1.5-pro",
         apiKey = apiKey,

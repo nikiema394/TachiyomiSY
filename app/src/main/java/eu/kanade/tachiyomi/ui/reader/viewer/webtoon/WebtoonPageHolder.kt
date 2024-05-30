@@ -115,7 +115,6 @@ class WebtoonPageHolder(
      * Binds the given [page] with this view holder, subscribing to its state.
      */
     fun bind(page: ReaderPage) {
-
         this.page = page
         loadJob?.cancel()
         loadJob = scope.launch { loadPageAndProcessStatus() }
@@ -145,6 +144,8 @@ class WebtoonPageHolder(
         frame.recycle()
         progressIndicator.setProgress(0)
         progressContainer.isVisible = true
+        textTranslationsComposeView?.let{frame.removeView(textTranslationsComposeView)}
+        textTranslationsComposeView=null
     }
 
     /**
@@ -190,6 +191,7 @@ class WebtoonPageHolder(
     private fun setQueued() {
         progressContainer.isVisible = true
         progressIndicator.show()
+        textTranslationsComposeView?.hide()
         removeErrorLayout()
     }
 
@@ -199,6 +201,7 @@ class WebtoonPageHolder(
     private fun setLoading() {
         progressContainer.isVisible = true
         progressIndicator.show()
+        textTranslationsComposeView?.hide()
         removeErrorLayout()
     }
 
@@ -207,6 +210,7 @@ class WebtoonPageHolder(
      */
     private fun setDownloading() {
         progressContainer.isVisible = true
+        textTranslationsComposeView?.hide()
         progressIndicator.show()
         removeErrorLayout()
     }
@@ -276,6 +280,7 @@ class WebtoonPageHolder(
      */
     private fun setError() {
         progressContainer.isVisible = false
+        textTranslationsComposeView?.hide()
         initErrorLayout()
     }
 
@@ -284,6 +289,7 @@ class WebtoonPageHolder(
      */
     private fun onImageDecoded() {
         progressContainer.isVisible = false
+        textTranslationsComposeView?.show()
         removeErrorLayout()
     }
 

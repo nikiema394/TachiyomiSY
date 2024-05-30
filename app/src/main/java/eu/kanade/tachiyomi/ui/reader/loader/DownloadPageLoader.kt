@@ -61,8 +61,6 @@ internal class DownloadPageLoader(
     }
 
     private suspend fun getPagesFromArchive(file: UniFile): List<ReaderPage> {
-        //TODO LOAD TRANSLATION HERE ALSO
-        // SY -->
         val loader = ZipPageLoader(file, context).also { zipPageLoader = it }
         // SY <--
         return loader.getPages()

@@ -32,6 +32,7 @@ class TranslationManager(
     val translator = Translator(context)
     val queueState
         get() = translator.queueState
+
     fun statusFlow(): Flow<Translation> = queueState.flatMapLatest { translations ->
         translations.map { translation ->
             translation.statusFlow.map { translation }
@@ -45,7 +46,7 @@ class TranslationManager(
     suspend fun deleteTranslation(chapterId: Long) {
         try {
             val chapter = getChapter.await(chapterId)!!
-            val manga=getManga.await(chapter.mangaId)!!
+            val manga = getManga.await(chapter.mangaId)!!
             downloadProvider.findChapterDir(
                 chapter.name,
                 chapter.scanlator,
@@ -69,18 +70,29 @@ class TranslationManager(
         title: String,
         source: Source,
     ): Map<String, List<TextTranslation>>? {
-        val dir = downloadProvider.findChapterDir(
-            chapterName,
-            scanlator,
-            title,
-            source,
-        ) ?: return null;
-        return dir.findFile("translations.json")?.let { getChapterTranslation(it) }
+        try {
+            val dir = downloadProvider.findChapterDir(
+                chapterName,
+                scanlator,
+                title,
+                source,
+            ) ?: return null;
+            return dir.findFile("translations.json")?.let { getChapterTranslation(it) }
+        } catch (e: Exception) {
+        }
+        return null
+
     }
+
     fun getChapterTranslation(
-        file:UniFile,
+        file: UniFile,
     ): Map<String, List<TextTranslation>>? {
-        return Json.decodeFromStream<Map<String, List<TextTranslation>>>(file.openInputStream())
+        try {
+            return Json.decodeFromStream<Map<String, List<TextTranslation>>>(file.openInputStream())
+        } catch (e: Exception) {
+            file.delete()
+        }
+        return null
     }
 
     fun translateChapter(chapterID: Long) {
