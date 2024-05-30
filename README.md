@@ -20,6 +20,7 @@ Newly Added :
 * Japanase
 
 ## Translation Comparison
+Source : Banished Disciple's Counter Attack : Chapter 465
 | ManhuaPlus  | Gemini | Google Translate  | MLKit (On Device) |
 | ------------- | ------------- | ------------- | ------------- |
 | ![ManhuaPlus](./.github/readme-images/manhuaplus.png)  | ![Gemini](./.github/readme-images/gemini.png)  | ![GoogleTranslate](./.github/readme-images/googletranslate.png)  | ![mlkit](./.github/readme-images/mlkit.png)  |
@@ -32,6 +33,8 @@ Newly Added :
 
 ## Download
 Get the app from our [releases page](https://github.com/mannu691/TachiyomiSY/releases/latest).
+
+Pro Tip : Cola Manga is a good extension for raw manhua
 
 **Currently Only "Long Strip" reader mode is working**
 **Also "Save as CBZ Archive" option is not supported**
