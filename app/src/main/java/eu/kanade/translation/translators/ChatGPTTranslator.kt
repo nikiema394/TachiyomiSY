@@ -13,8 +13,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
+import java.util.Locale
 
-class ChatGPTTranslator(scanLanguage: ScanLanguage, private var apiKey: String) : TextTranslator {
+class ChatGPTTranslator(private val langFrom: ScanLanguage,private val langTo: Locale, private var apiKey: String) : TextTranslator {
     //TODO IMRPOVE THIS ONE ONCE I GOT A API KEY
     override suspend fun translate(pages: HashMap<String, List<TextTranslation>>){
         try {

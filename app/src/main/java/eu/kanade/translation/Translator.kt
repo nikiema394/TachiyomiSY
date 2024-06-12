@@ -39,9 +39,11 @@ class Translator(context: Context, private val downloadPreferences: DownloadPref
     init {
 
         launchNow {
-
-            downloadPreferences.translateLanguage().changes().onEach {
-                chapterTranslator.updateLanguage(ScanLanguage.entries[it])
+            downloadPreferences.translateToLanguage().changes().onEach {
+                chapterTranslator.updateToLanguage(it)
+            }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
+            downloadPreferences.translateFromLanguage().changes().onEach {
+                chapterTranslator.updateFromLanguage(ScanLanguage.entries[it])
             }.launchIn(ProcessLifecycleOwner.get().lifecycleScope)
             downloadPreferences.translationApiKey().changes().onEach {
                 chapterTranslator.updateAPIKey(it)

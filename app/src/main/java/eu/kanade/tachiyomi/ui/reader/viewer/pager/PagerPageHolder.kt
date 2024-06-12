@@ -3,19 +3,25 @@ package eu.kanade.tachiyomi.ui.reader.viewer.pager
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.LayoutInflater
+import android.widget.FrameLayout
 import androidx.core.view.isVisible
 import eu.kanade.tachiyomi.databinding.ReaderErrorBinding
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderPageImageView
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
 import eu.kanade.tachiyomi.widget.ViewPagerAdapter
+import eu.kanade.translation.TextTranslation
+import eu.kanade.translation.TextTranslationsComposeView
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import logcat.LogPriority
@@ -27,6 +33,8 @@ import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.decoder.ImageDecoder
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import kotlin.math.max
 
 /**
@@ -36,13 +44,15 @@ import kotlin.math.max
 class PagerPageHolder(
     readerThemedContext: Context,
     val viewer: PagerViewer,
-    val page: ReaderPage,
-    private var extraPage: ReaderPage? = null,
-) : ReaderPageImageView(readerThemedContext), ViewPagerAdapter.PositionableView {
+    val page: ReaderPage,  private var extraPage: ReaderPage? = null,private val readerPreferences: ReaderPreferences = Injekt.get(),
 
+) : ReaderPageImageView(readerThemedContext), ViewPagerAdapter.PositionableView {
+    private var textTranslationsComposeView: TextTranslationsComposeView? = null
+    private var showTranslations=false
     /**
      * Item that identifies this view. Needed by the adapter to not recreate views.
      */
+
     override val item
         get() = page to extraPage
 
@@ -69,9 +79,20 @@ class PagerPageHolder(
     private var extraLoadJob: Job? = null
 
     init {
+
         addView(progressIndicator)
         loadJob = scope.launch { loadPageAndProcessStatus(1) }
         extraLoadJob = scope.launch { loadPageAndProcessStatus(2) }
+        showTranslations=readerPreferences.showTranslations().get()
+        readerPreferences.showTranslations().changes().onEach {
+            showTranslations=it
+            if(it){
+                textTranslationsComposeView?.show()
+            }else{
+                textTranslationsComposeView?.hide()
+            }
+
+        }.launchIn(scope)
     }
 
     /**
@@ -84,6 +105,8 @@ class PagerPageHolder(
         loadJob = null
         extraLoadJob?.cancel()
         extraLoadJob = null
+        textTranslationsComposeView?.let{removeView(textTranslationsComposeView)}
+        textTranslationsComposeView=null
     }
 
     /**
@@ -113,7 +136,11 @@ class PagerPageHolder(
                             progressIndicator.setProgress(value)
                         }
                     }
-                    Page.State.READY -> setImage()
+                    Page.State.READY -> {
+
+                        setImage()
+                        page.translations?.let { createTranslationTextDialog(it) }
+                    }
                     Page.State.ERROR -> setError()
                 }
             }
@@ -125,6 +152,7 @@ class PagerPageHolder(
      */
     private fun setQueued() {
         progressIndicator.show()
+        textTranslationsComposeView?.hide()
         removeErrorLayout()
     }
 
@@ -133,6 +161,7 @@ class PagerPageHolder(
      */
     private fun setLoading() {
         progressIndicator.show()
+        textTranslationsComposeView?.hide()
         removeErrorLayout()
     }
 
@@ -142,6 +171,7 @@ class PagerPageHolder(
     private fun setDownloading() {
         progressIndicator.show()
         removeErrorLayout()
+        textTranslationsComposeView?.hide()
     }
 
     /**
@@ -184,6 +214,7 @@ class PagerPageHolder(
                 }
             }
             withUIContext {
+
                 setImage(
                     source,
                     isAnimated,
@@ -386,11 +417,13 @@ class PagerPageHolder(
      */
     private fun setError() {
         progressIndicator.hide()
+        textTranslationsComposeView?.hide()
         showErrorLayout()
     }
 
     override fun onImageLoaded() {
         super.onImageLoaded()
+        textTranslationsComposeView?.show()
         progressIndicator.hide()
     }
 
@@ -434,7 +467,17 @@ class PagerPageHolder(
         errorLayout?.root?.isVisible = true
         return errorLayout!!
     }
+    private fun createTranslationTextDialog(textTranslations: List<TextTranslation>) {
+        textTranslationsComposeView?.let { removeView(textTranslationsComposeView) }
+        textTranslationsComposeView = TextTranslationsComposeView(context, translations = textTranslations)
 
+        val layoutParams = LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+        )
+        if(!showTranslations) textTranslationsComposeView?.hide()
+        addView(textTranslationsComposeView, layoutParams)
+    }
     /**
      * Removes the decode error layout from the holder, if found.
      */

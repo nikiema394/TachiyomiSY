@@ -65,7 +65,7 @@ enum class ReadingMode(
             val mode = fromPreference(preference)
             return mode.type is ViewerType.Pager
         }
-
+        //TODO IMPLEMENT TRANSLATION VIEW IN ALL OTHER VIEWERS
         fun toViewer(preference: Int?, activity: ReaderActivity): Viewer {
             return when (fromPreference(preference)) {
                 LEFT_TO_RIGHT -> L2RPagerViewer(activity)

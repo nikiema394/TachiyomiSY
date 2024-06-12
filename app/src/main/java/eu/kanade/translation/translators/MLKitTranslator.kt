@@ -8,11 +8,12 @@ import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlinx.coroutines.tasks.await
 import tachiyomi.core.common.util.system.logcat
+import java.util.Locale
 
-class MLKitTranslator(scanLanguage: ScanLanguage) : TextTranslator {
+class MLKitTranslator(private val langFrom: ScanLanguage, private val langTo: Locale) : TextTranslator {
 
     private var translator = Translation.getClient(
-        TranslatorOptions.Builder().setSourceLanguage(scanLanguage.code).setTargetLanguage(TranslateLanguage.ENGLISH)
+        TranslatorOptions.Builder().setSourceLanguage(langFrom.code).setTargetLanguage(TranslateLanguage.fromLanguageTag(langTo.language)?:TranslateLanguage.ENGLISH)
             .build(),
     )
     private var conditions = DownloadConditions.Builder().build()

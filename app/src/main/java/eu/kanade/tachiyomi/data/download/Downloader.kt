@@ -167,8 +167,9 @@ class Downloader(
      */
     fun stop(reason: String? = null) {
         cancelDownloaderJob()
-        queueState.value.filter { it.status == Download.State.DOWNLOADING }.forEach { it.status = Download.State.ERROR }
-
+        queueState.value
+            .filter { it.status == Download.State.DOWNLOADING }
+            .forEach { it.status = Download.State.ERROR }
         if (reason != null) {
             notifier.onWarning(reason)
             return
@@ -190,7 +191,9 @@ class Downloader(
      */
     fun pause() {
         cancelDownloaderJob()
-        queueState.value.filter { it.status == Download.State.DOWNLOADING }.forEach { it.status = Download.State.QUEUE }
+        queueState.value
+            .filter { it.status == Download.State.DOWNLOADING }
+            .forEach { it.status = Download.State.QUEUE }
         isPaused = true
     }
 
@@ -221,9 +224,10 @@ class Downloader(
 
                     if (activeDownloads.isEmpty()) break
                     // Suspend until a download enters the ERROR state
-                    val activeDownloadsErroredFlow = combine(activeDownloads.map(Download::statusFlow)) { states ->
-                        states.contains(Download.State.ERROR)
-                    }.filter { it }
+                    val activeDownloadsErroredFlow =
+                        combine(activeDownloads.map(Download::statusFlow)) { states ->
+                            states.contains(Download.State.ERROR)
+                        }.filter { it }
                     activeDownloadsErroredFlow.first()
                 }
             }.distinctUntilChanged()

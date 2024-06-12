@@ -10,9 +10,9 @@ import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import org.json.JSONObject
 import tachiyomi.core.common.util.system.logcat
+import java.util.Locale
 
-class GeminiTranslator(scanLanguage: ScanLanguage, var key: String) : TextTranslator {
-    private var apiKey = key
+class GeminiTranslator(private val langFrom: ScanLanguage, private val langTo: Locale, private var apiKey: String) : TextTranslator {
     private var model: GenerativeModel = GenerativeModel(
         modelName = "gemini-1.5-pro",
         apiKey = apiKey,
@@ -29,7 +29,7 @@ class GeminiTranslator(scanLanguage: ScanLanguage, var key: String) : TextTransl
             SafetySetting(HarmCategory.SEXUALLY_EXPLICIT, BlockThreshold.NONE),
             SafetySetting(HarmCategory.DANGEROUS_CONTENT, BlockThreshold.NONE),
         ),
-        systemInstruction = content { text("You will be provided some text in some Language and your task is to translate it into English, output should be a objects with name as key and array of translations as value") },
+        systemInstruction = content { text("You will be provided some text in some language From a chapter of a [manhua,manhwa,manga,comic] and your task is to translate it into ${langTo.displayLanguage} while making use of the whole text as context and keeping in mind its for a [manhua,manhwa,manga,comic], output should be a objects with name as key and array of translations as value") },
     );
     private var chat = model.startChat()
 

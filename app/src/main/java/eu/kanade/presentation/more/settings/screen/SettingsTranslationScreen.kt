@@ -12,6 +12,7 @@ import kotlinx.collections.immutable.toImmutableMap
 import tachiyomi.domain.download.service.DownloadPreferences
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.Locale
 
 object SettingsTranslationScreen : SearchableSettings {
 
@@ -27,24 +28,36 @@ object SettingsTranslationScreen : SearchableSettings {
                 pref = downloadPreferences.translateOnDownload(),
                 title = "Auto Translate On Download",
             ),
-            getTranslateLanguage(downloadPreferences = downloadPreferences),
+            getTranslateFromLanguage(downloadPreferences = downloadPreferences),
+            getTranslateToLanguage(downloadPreferences = downloadPreferences),
             getTranslateFont(downloadPreferences = downloadPreferences),
             getTranslateEngineGroup(downloadPreferences = downloadPreferences)
         )
     }
 
     @Composable
-    private fun getTranslateLanguage(
+    private fun getTranslateFromLanguage(
         downloadPreferences: DownloadPreferences,
     ): Preference {
         val opts = listOf("Chinese", "Japanese", "Korean", "Latin")
         return Preference.PreferenceItem.ListPreference(
-            pref = downloadPreferences.translateLanguage(),
+            pref = downloadPreferences.translateFromLanguage(),
             title = "Translate From",
             entries = listOf(0, 1, 2, 3)
                 .associateWith {
                    opts[it]
                 }
+                .toImmutableMap(),
+        )
+    }
+    @Composable
+    private fun getTranslateToLanguage(
+        downloadPreferences: DownloadPreferences,
+    ): Preference {
+        return Preference.PreferenceItem.ListPreference(
+            pref = downloadPreferences.translateToLanguage(),
+            title = "Translate To",
+            entries =Locale.getAvailableLocales().distinctBy { it.language }.associate { Pair(it.language, it.displayLanguage )}
                 .toImmutableMap(),
         )
     }

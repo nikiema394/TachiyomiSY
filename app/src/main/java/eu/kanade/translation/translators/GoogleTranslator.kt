@@ -12,14 +12,15 @@ import org.json.JSONArray
 import tachiyomi.core.common.util.system.logcat
 import java.io.UnsupportedEncodingException
 import java.net.URLEncoder
+import java.util.Locale
 import kotlin.jvm.internal.Intrinsics
 
-class GoogleTranslator(scanLanguage: ScanLanguage) : TextTranslator {
+class GoogleTranslator(private val langFrom: ScanLanguage, private val langTo: Locale) : TextTranslator {
     private val client1 = "gtx"
     private val client2 = "webapp"
     override suspend fun translate(pages: HashMap<String, List<TextTranslation>>) {
         try {
-            pages.forEach { (k,v)->v.forEach { b->b.translated=translateText("en",b.text) }}
+            pages.forEach { (k,v)->v.forEach { b->b.translated=translateText(langTo.language,b.text) }}
 
         } catch (e: Exception) {
             logcat { "Image Translation Error : ${e.message}" }

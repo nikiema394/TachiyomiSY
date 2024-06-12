@@ -87,6 +87,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import logcat.logcat
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
@@ -1245,6 +1246,7 @@ class MangaScreenModel(
         items: List<ChapterList.Item>,
         action: ChapterDownloadAction,
     ) {
+
         when (action) {
             ChapterDownloadAction.START -> {
 

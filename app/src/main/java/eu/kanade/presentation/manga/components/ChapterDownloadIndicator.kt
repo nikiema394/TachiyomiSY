@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.download.model.Download
+import logcat.logcat
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.IconButtonTokens
 import tachiyomi.presentation.core.i18n.stringResource
@@ -55,6 +56,7 @@ fun ChapterDownloadIndicator(
     modifier: Modifier = Modifier,translationEnabled: Boolean =false
 ) {
     when (val downloadState = downloadStateProvider()) {
+
         Download.State.NOT_DOWNLOADED -> NotDownloadedIndicator(
             enabled = enabled,
             modifier = modifier,

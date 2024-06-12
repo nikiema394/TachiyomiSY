@@ -53,6 +53,7 @@ class TextTranslationsComposeView :
         resId = R.font.animeace, // Resource ID of the font file
         weight = FontWeight.Bold, // Weight of the font
     ).toFontFamily()
+
     constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -83,23 +84,23 @@ class TextTranslationsComposeView :
                 .fillMaxSize()
                 .onSizeChanged {
                     size = it
-                    if(size==IntSize.Zero)hide()
-                    if(size==IntSize.Zero)show()
+                    if (size == IntSize.Zero) hide()
+                    if (size == IntSize.Zero) show()
                 },
         ) {
             if (size == IntSize.Zero) return
             val imgWidth = size.width
             val imgHeight = size.height
             translations.forEach { translation ->
-                val xPx = ((translation.x-0.02) * imgWidth).toFloat()
-                val yPx =  ((translation.y-0.015) * imgHeight).toFloat()
-                val width = ((translation.width+0.04) * imgWidth).toFloat()
-                val height =((translation.height*1.2+0.03) * imgHeight).toFloat()
+                val xPx = ((translation.x - 0.02) * imgWidth).toFloat()
+                val yPx = ((translation.y - 0.02) * imgHeight).toFloat()
+                val width = ((translation.width + 0.04) * imgWidth).toFloat()
+                val height = ((translation.height + 0.04) * imgHeight).toFloat()
                 TextBlock(
                     translation = translation,
                     modifier = Modifier
                         .absoluteOffset(pxToDp(xPx), pxToDp(yPx))
-                        .rotate(if(translation.angle<89)translation.angle else 0f)
+                        .rotate(if (translation.angle < 88) translation.angle else 0f)
                         .size(pxToDp(width), pxToDp(height)),
                 )
             }
@@ -117,10 +118,10 @@ class TextTranslationsComposeView :
                 overflow = TextOverflow.Clip,
                 alignment = Alignment.Center,
                 modifier = Modifier
-                    .background(Color.White)
-                    .padding(1.dp)
+                    .background(Color.Red.copy(alpha = 0.4f))
+                    .padding(1.dp),
 
-            )
+                )
         }
     }
 
